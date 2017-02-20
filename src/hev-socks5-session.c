@@ -39,6 +39,8 @@ enum
 	STEP_READ_REQUEST,
 	STEP_DO_CONNECT,
 	STEP_DO_SPLICE, 
+	STEP_DO_DNS_FWD,
+	STEP_DO_FWD_DNS,
 	STEP_WRITE_RESPONSE,
 	STEP_WRITE_RESPONSE_ERROR_CMD,
 	STEP_WRITE_RESPONSE_ERROR_SOCK,
@@ -50,6 +52,8 @@ enum
 struct _HevSocks5Session
 {
 	HevSocks5SessionBase base;
+
+	int mode;
 
 	int client_fd;
 	int remote_fd;
@@ -199,6 +203,63 @@ retry:
 	size += s;
 	if (size < len)
 		goto retry;
+
+	return size;
+}
+
+static ssize_t
+task_socket_sendmsg (int fd, const struct msghdr *msg, int flags, HevSocks5Session *session)
+{
+	ssize_t s;
+	size_t i, size = 0, len = 0;
+	struct msghdr mh;
+	struct iovec iov[msg->msg_iovlen];
+
+	mh.msg_name = msg->msg_name;
+	mh.msg_namelen = msg->msg_namelen;
+	mh.msg_control = msg->msg_control;
+	mh.msg_controllen = msg->msg_controllen;
+	mh.msg_flags = msg->msg_flags;
+	mh.msg_iov = iov;
+	mh.msg_iovlen = msg->msg_iovlen;
+
+	for (i=0; i<msg->msg_iovlen; i++) {
+		iov[i] = msg->msg_iov[i];
+		len += iov[i].iov_len;
+	}
+
+retry:
+	s = sendmsg (fd, &mh, flags & ~MSG_WAITALL);
+	if (s == -1 && errno == EAGAIN) {
+		hev_task_yield (HEV_TASK_WAITIO);
+		if (session->base.hp <= 0)
+			return -2;
+		goto retry;
+	}
+
+	if (!(flags & MSG_WAITALL))
+		return s;
+
+	if (s <= 0)
+		return size;
+
+	size += s;
+	if (size < len) {
+		for (i=0; i<mh.msg_iovlen; i++) {
+			if (s < iov[i].iov_len) {
+				iov[i].iov_base += s;
+				iov[i].iov_len -= s;
+				break;
+			}
+
+			s -= iov[i].iov_len;
+		}
+
+		mh.msg_iov += i;
+		mh.msg_iovlen -= i;
+
+		goto retry;
+	}
 
 	return size;
 }
@@ -370,6 +431,8 @@ socks5_read_request (HevSocks5Session *self)
 	switch (socks5_r.cmd) {
 	case 0x01: /* connect */
 		return STEP_DO_CONNECT;
+	case 0x04: /* dns forward */
+		return STEP_DO_DNS_FWD;
 	}
 
 	return STEP_WRITE_RESPONSE_ERROR_CMD;
@@ -577,6 +640,93 @@ socks5_do_splice (HevSocks5Session *self)
 }
 
 static int
+socks5_do_dns_fwd (HevSocks5Session *self)
+{
+	Socks5ReqResHeader socks5_r;
+	ssize_t len;
+
+	/* set to dns fwd mode */
+	self->mode = 1;
+
+	/* read socks5 request body */
+	len = task_socket_recv (self->client_fd, &socks5_r.atype, 7, MSG_WAITALL, self);
+	if (len <= 0)
+		return STEP_CLOSE_SESSION;
+
+	/* set default dns address */
+	self->address.sin_family = AF_INET;
+	self->address.sin_addr.s_addr = inet_addr (hev_config_get_dns_address ());
+	self->address.sin_port = htons (53);
+
+	return STEP_WRITE_RESPONSE;
+}
+
+static int
+socks5_do_fwd_dns (HevSocks5Session *self)
+{
+	HevTask *task;
+	int dns_fd, nonblock = 1;
+	unsigned char buf[2048];
+	ssize_t len;
+	struct msghdr mh;
+	struct iovec iov[2];
+	socklen_t addr_len = sizeof (struct sockaddr_in);
+	unsigned short dns_len;
+
+	dns_fd = socket (AF_INET, SOCK_DGRAM, 0);
+	if (dns_fd == -1)
+		return STEP_CLOSE_SESSION;
+
+	if (ioctl (dns_fd, FIONBIO, (char *) &nonblock) == -1)
+		goto quit;
+
+	task = hev_task_self ();
+	hev_task_add_fd (task, dns_fd, EPOLLIN | EPOLLOUT);
+
+	/* read dns request length */
+	len = task_socket_recv (self->client_fd, &dns_len, 2, MSG_WAITALL, self);
+	if (len <= 0)
+		return STEP_CLOSE_SESSION;
+	dns_len = ntohs (dns_len);
+
+	/* read dns request */
+	len = task_socket_recv (self->client_fd, buf, dns_len, MSG_WAITALL, self);
+	if (len <= 0)
+		return STEP_CLOSE_SESSION;
+
+	/* send dns request */
+	len = task_socket_sendto (dns_fd, buf, len, 0,
+				(struct sockaddr *) &self->address, addr_len, self);
+	if (len <= 0)
+		goto quit;
+
+	/* recv dns response */
+	len = task_socket_recvfrom (dns_fd, buf, 2048, 0,
+				(struct sockaddr *) &self->address, &addr_len, self);
+	if (len <= 0)
+		goto quit;
+
+	memset (&mh, 0, sizeof (mh));
+	mh.msg_iov = iov;
+	mh.msg_iovlen = 2;
+
+	/* write dns response length */
+	dns_len = htons (len);
+	iov[0].iov_base = &dns_len;
+	iov[0].iov_len = 2;
+
+	/* send dns response */
+	iov[1].iov_base = buf;
+	iov[1].iov_len = len;
+
+	task_socket_sendmsg (self->client_fd, &mh, MSG_WAITALL, self);
+
+quit:
+	close (dns_fd);
+	return STEP_CLOSE_SESSION;
+}
+
+static int
 socks5_write_response (HevSocks5Session *self, int step)
 {
 	Socks5ReqResHeader socks5_r;
@@ -587,7 +737,7 @@ socks5_write_response (HevSocks5Session *self, int step)
 	switch (step) {
 	case STEP_WRITE_RESPONSE:
 		socks5_r.rep = 0x00;
-		next_step = STEP_DO_SPLICE;
+		next_step = self->mode ? STEP_DO_FWD_DNS : STEP_DO_SPLICE;
 		break;
 	case STEP_WRITE_RESPONSE_ERROR_CMD:
 		socks5_r.rep = 0x07;
@@ -652,6 +802,12 @@ hev_socks5_session_task_entry (void *data)
 			break;
 		case STEP_DO_SPLICE:
 			step = socks5_do_splice (self);
+			break;
+		case STEP_DO_DNS_FWD:
+			step = socks5_do_dns_fwd (self);
+			break;
+		case STEP_DO_FWD_DNS:
+			step = socks5_do_fwd_dns (self);
 			break;
 		case STEP_WRITE_RESPONSE:
 		case STEP_WRITE_RESPONSE_ERROR_CMD:
