@@ -346,7 +346,7 @@ task_socket_connect (int fd, const struct sockaddr *addr, socklen_t addr_len,
 	int ret;
 retry:
 	ret = connect (fd, addr, addr_len);
-	if (ret == -1 && errno == EINPROGRESS) {
+	if (ret == -1 && (errno == EINPROGRESS || errno == EALREADY)) {
 		hev_task_yield (HEV_TASK_WAITIO);
 		if (session->base.hp <= 0)
 			return -2;
