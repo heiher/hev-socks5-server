@@ -326,7 +326,7 @@ task_socket_splice (int fd_in, int fd_out, void *buf, size_t len,
 	s = send (fd_out, buf + *w_off, *w_left, 0);
 	if (s == -1) {
 		if (errno == EAGAIN)
-			return -2;
+			return 0;
 		else
 			return -1;
 	} else if (s == 0) {
@@ -336,7 +336,7 @@ task_socket_splice (int fd_in, int fd_out, void *buf, size_t len,
 		*w_left -= s;
 	}
 
-	return -2;
+	return *w_off;
 }
 
 static int
