@@ -30,21 +30,21 @@ static void session_manager_insert_session (HevSocks5Session *session);
 static void session_manager_remove_session (HevSocks5Session *session);
 static void session_close_handler (HevSocks5Session *session, void *data);
 
-static HevTask *task;
+static HevTask *task_server;
+static HevTask *task_session_manager;
 static HevSocks5SessionBase *session_list;
 
 int
 hev_socks5_server_init (void)
 {
-	task = hev_task_new (4096);
-	if (!task) {
+	task_server = hev_task_new (4096);
+	if (!task_server) {
 		fprintf (stderr, "Create server's task failed!\n");
 		return -1;
 	}
-	hev_task_run (task, hev_socks5_server_task_entry, NULL);
 
-	task = hev_task_new (4096);
-	if (!task) {
+	task_session_manager = hev_task_new (4096);
+	if (!task_session_manager) {
 		fprintf (stderr, "Create session manager's task failed!\n");
 		return -1;
 	}
@@ -60,7 +60,8 @@ hev_socks5_server_fini (void)
 void
 hev_socks5_server_run (void)
 {
-	hev_task_run (task, hev_socks5_session_manager_task_entry, NULL);
+	hev_task_run (task_server, hev_socks5_server_task_entry, NULL);
+	hev_task_run (task_session_manager, hev_socks5_session_manager_task_entry, NULL);
 }
 
 static int
