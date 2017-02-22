@@ -8,6 +8,7 @@
  */
 
 #include <stdio.h>
+#include <signal.h>
 
 #include "hev-main.h"
 #include "hev-task.h"
@@ -37,8 +38,11 @@ main (int argc, char *argv[])
 	if (0 > hev_task_system_init ())
 		return -2;
 
-	if (0 > hev_socks5_server_init ())
+	if (signal (SIGPIPE, SIG_IGN) == SIG_ERR)
 		return -3;
+
+	if (0 > hev_socks5_server_init ())
+		return -4;
 	hev_socks5_server_run ();
 
 	hev_task_system_run ();
