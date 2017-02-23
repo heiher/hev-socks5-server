@@ -689,6 +689,10 @@ socks5_do_fwd_dns (HevSocks5Session *self)
 		return STEP_CLOSE_SESSION;
 	dns_len = ntohs (dns_len);
 
+	/* check dns request length */
+	if (dns_len >= 2048)
+		return STEP_CLOSE_SESSION;
+
 	/* read dns request */
 	len = task_socket_recv (self->client_fd, buf, dns_len, MSG_WAITALL, self);
 	if (len <= 0)
