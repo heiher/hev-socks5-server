@@ -66,6 +66,8 @@ hev_socks5_server_init (void)
 void
 hev_socks5_server_fini (void)
 {
+	quit = 0;
+	event_fd = -1;
 }
 
 void
