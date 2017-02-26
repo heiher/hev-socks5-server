@@ -58,7 +58,7 @@ hev_socks5_server_fini (void)
 }
 
 void
-hev_socks5_server_run (void)
+hev_socks5_server_start (void)
 {
 	hev_task_run (task_server, hev_socks5_server_task_entry, NULL);
 	hev_task_run (task_session_manager, hev_socks5_session_manager_task_entry, NULL);
