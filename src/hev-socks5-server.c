@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/eventfd.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -24,13 +25,17 @@
 #define TIMEOUT		(30 * 1000)
 
 static void hev_socks5_server_task_entry (void *data);
+static void hev_socks5_event_task_entry (void *data);
 static void hev_socks5_session_manager_task_entry (void *data);
 
 static void session_manager_insert_session (HevSocks5Session *session);
 static void session_manager_remove_session (HevSocks5Session *session);
 static void session_close_handler (HevSocks5Session *session, void *data);
 
+static int quit;
+static int event_fd = -1;
 static HevTask *task_server;
+static HevTask *task_event;
 static HevTask *task_session_manager;
 static HevSocks5SessionBase *session_list;
 
@@ -40,6 +45,12 @@ hev_socks5_server_init (void)
 	task_server = hev_task_new (4096);
 	if (!task_server) {
 		fprintf (stderr, "Create server's task failed!\n");
+		return -1;
+	}
+
+	task_event = hev_task_new (4096);
+	if (!task_event) {
+		fprintf (stderr, "Create event's task failed!\n");
 		return -1;
 	}
 
@@ -61,7 +72,18 @@ void
 hev_socks5_server_start (void)
 {
 	hev_task_run (task_server, hev_socks5_server_task_entry, NULL);
+	hev_task_run (task_event, hev_socks5_event_task_entry, NULL);
 	hev_task_run (task_session_manager, hev_socks5_session_manager_task_entry, NULL);
+}
+
+void
+hev_socks5_server_stop (void)
+{
+	if (event_fd == -1)
+		return;
+
+	if (eventfd_write (event_fd, 1) == -1)
+		fprintf (stderr, "Write stop event failed!\n");
 }
 
 static int
@@ -72,6 +94,8 @@ retry:
 	new_fd = accept (fd, addr, addr_len);
 	if (new_fd == -1 && errno == EAGAIN) {
 		hev_task_yield (HEV_TASK_WAITIO);
+		if (quit)
+			return -2;
 		goto retry;
 	}
 
@@ -134,6 +158,8 @@ hev_socks5_server_task_entry (void *data)
 		if (-1 == client_fd) {
 			fprintf (stderr, "Accept failed!\n");
 			continue;
+		} else if (-2 == client_fd) {
+			break;
 		}
 
 #ifdef _DEBUG
@@ -161,12 +187,66 @@ hev_socks5_server_task_entry (void *data)
 }
 
 static void
+hev_socks5_event_task_entry (void *data)
+{
+	HevTask *task = hev_task_self ();
+	ssize_t size;
+	HevSocks5SessionBase *session;
+
+	event_fd = eventfd (0, EFD_NONBLOCK);
+	if (-1 == event_fd) {
+		fprintf (stderr, "Create eventfd failed!\n");
+		return;
+	}
+
+	hev_task_add_fd (task, event_fd, EPOLLIN);
+
+	for (;;) {
+		eventfd_t val;
+		size = eventfd_read (event_fd, &val);
+		if (-1 == size && errno == EAGAIN) {
+			hev_task_yield (HEV_TASK_WAITIO);
+			continue;
+		}
+		break;
+	}
+
+	/* set quit flag */
+	quit = 1;
+	/* wakeup server's task */
+	hev_task_wakeup (task_server);
+	/* wakeup session manager's task */
+	hev_task_wakeup (task_session_manager);
+
+	/* wakeup sessions's task */
+#ifdef _DEBUG
+	printf ("Enumerating session list ...\n");
+#endif
+	for (session=session_list; session; session=session->next) {
+#ifdef _DEBUG
+		printf ("Set session %p's hp = 0\n", session);
+#endif
+		session->hp = 0;
+
+		/* wakeup session's task to do destroy */
+		hev_task_wakeup (session->task);
+#ifdef _DEBUG
+		printf ("Wakeup session %p's task %p\n", session, session->task);
+#endif
+	}
+
+	close (event_fd);
+}
+
+static void
 hev_socks5_session_manager_task_entry (void *data)
 {
 	for (;;) {
 		HevSocks5SessionBase *session;
 
 		hev_task_sleep (TIMEOUT);
+		if (quit)
+			break;
 
 #ifdef _DEBUG
 		printf ("Enumerating session list ...\n");
