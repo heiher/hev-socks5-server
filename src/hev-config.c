@@ -16,6 +16,7 @@
 static char listen_address[16];
 static char dns_address[16];
 static unsigned short port;
+static unsigned int workers;
 
 int
 hev_config_init (const char *config_path)
@@ -56,6 +57,11 @@ hev_config_init (const char *config_path)
 	}
 	strncpy (dns_address, address, 16);
 
+	/* Main:Workers */
+	workers = iniparser_getint (ini_dict, "Main:Workers", 1);
+	if (workers <= 0)
+		workers = 1;
+
 	iniparser_freedict (ini_dict);
 
 	return 0;
@@ -64,6 +70,12 @@ hev_config_init (const char *config_path)
 void
 hev_config_fini (void)
 {
+}
+
+unsigned int
+hev_config_get_workers (void)
+{
+	return workers;
 }
 
 const char *
