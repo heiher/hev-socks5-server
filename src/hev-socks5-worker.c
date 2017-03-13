@@ -61,14 +61,14 @@ hev_socks5_worker_new (int fd)
 	self->fd = fd;
 	self->event_fd = -1;
 
-	self->task_worker = hev_task_new (4096);
+	self->task_worker = hev_task_new (8192);
 	if (!self->task_worker) {
 		fprintf (stderr, "Create worker's task failed!\n");
 		hev_free (self);
 		return NULL;
 	}
 
-	self->task_event = hev_task_new (4096);
+	self->task_event = hev_task_new (8192);
 	if (!self->task_event) {
 		fprintf (stderr, "Create event's task failed!\n");
 		hev_task_unref (self->task_worker);
@@ -76,7 +76,7 @@ hev_socks5_worker_new (int fd)
 		return NULL;
 	}
 
-	self->task_session_manager = hev_task_new (4096);
+	self->task_session_manager = hev_task_new (8192);
 	if (!self->task_session_manager) {
 		fprintf (stderr, "Create session manager's task failed!\n");
 		hev_task_unref (self->task_event);
