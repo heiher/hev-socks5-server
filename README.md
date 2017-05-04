@@ -1,4 +1,4 @@
-#HevSocks5Server
+# HevSocks5Server
 
 HevSocks5Server is a simple, lightweight socks5 server for Linux.
 
@@ -6,7 +6,7 @@ HevSocks5Server is a simple, lightweight socks5 server for Linux.
 * standard CONNECT command supported.
 * private DNSFWD command supported.
 
-##How to Build
+## How to Build
 
 **Linux**:
 ```bash
@@ -31,5 +31,5 @@ nkd-build
 ## Authors
 * **Heiher** - https://hev.cc
 
-##License
+## License
 LGPL
