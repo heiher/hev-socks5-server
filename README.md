@@ -25,7 +25,7 @@ git clone git://github.com/heiher/hev-socks5-server jni
 cd jni
 git submodule init
 git submodule update
-nkd-build
+ndk-build
 ```
 
 ## Authors
