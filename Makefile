@@ -2,9 +2,10 @@
 
 PROJECT=hev-socks5-server
 
-PP=cpp
-CC=cc
-STRIP=strip
+CROSS_PREFIX :=
+PP=$(CROSS_PREFIX)cpp
+CC=$(CROSS_PREFIX)gcc
+STRIP=$(CROSS_PREFIX)strip
 MARCH:=native
 CCFLAGS=-march=$(MARCH) -O3 -Wall -Werror \
 		-I$(THIRDPARTDIR)/ini-parser/src \
