@@ -31,6 +31,12 @@ LINKMSG="\e[1;34mLINK\e[0m  \e[1;32m$@\e[0m"
 STRIPMSG="\e[1;34mSTRIP\e[0m \e[1;32m$@\e[0m"
 CLEANMSG="\e[1;34mCLEAN\e[0m $(PROJECT)"
 
+V :=
+ECHO_PREFIX := @
+ifeq ($(V),1)
+	undefine ECHO_PREFIX
+endif
+
 .PHONY: all clean tp-all tp-clean
 
 all : tp-all $(TARGET)
@@ -42,20 +48,20 @@ tp-clean : $(THIRDPARTS)
 	@$(foreach dir,$^,make --no-print-directory -C $(dir) clean;)
 
 clean : tp-clean
-	@$(RM) $(BINDIR)/* $(BUILDDIR)/*
+	$(ECHO_PREFIX) $(RM) $(BINDIR)/* $(BUILDDIR)/*
 	@echo -e $(CLEANMSG)
 
 $(TARGET) : $(LDOBJS)
-	@$(CC) -o $@ $^ $(LDFLAGS)
+	$(ECHO_PREFIX) $(CC) -o $@ $^ $(LDFLAGS)
 	@echo -e $(LINKMSG)
-	@$(STRIP) $@
+	$(ECHO_PREFIX) $(STRIP) $@
 	@echo -e $(STRIPMSG)
 
 $(BUILDDIR)/%.dep : $(SRCDIR)/%.c
-	@$(PP) $(CCFLAGS) -MM -MT $(@:.dep=.o) -o $@ $<
+	$(ECHO_PREFIX) $(PP) $(CCFLAGS) -MM -MT $(@:.dep=.o) -o $@ $<
 
 $(BUILDDIR)/%.o : $(SRCDIR)/%.c
-	@$(CC) $(CCFLAGS) -c -o $@ $<
+	$(ECHO_PREFIX) $(CC) $(CCFLAGS) -c -o $@ $<
 	@echo -e $(BUILDMSG)
 
 ifneq ($(MAKECMDGOALS),clean)
