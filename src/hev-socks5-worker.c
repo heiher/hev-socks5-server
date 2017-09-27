@@ -22,6 +22,7 @@
 #include "hev-memory-allocator.h"
 #include "hev-config.h"
 #include "hev-task.h"
+#include "hev-task-io-socket.h"
 
 #define TIMEOUT		(30 * 1000)
 
@@ -114,19 +115,13 @@ hev_socks5_worker_stop (HevSocks5Worker *self)
 }
 
 static int
-task_socket_accept (int fd, struct sockaddr *addr, socklen_t *addr_len, HevSocks5Worker *self)
+worker_task_io_yielder (HevTaskYieldType type, void *data)
 {
-	int new_fd;
-retry:
-	new_fd = accept (fd, addr, addr_len);
-	if (new_fd == -1 && errno == EAGAIN) {
-		hev_task_yield (HEV_TASK_WAITIO);
-		if (self->quit)
-			return -2;
-		goto retry;
-	}
+	HevSocks5Worker *self = data;
 
-	return new_fd;
+	hev_task_yield (type);
+
+	return (self->quit) ? -1 : 0;
 }
 
 static void
@@ -144,7 +139,8 @@ hev_socks5_worker_task_entry (void *data)
 		socklen_t addr_len = sizeof (addr);
 		HevSocks5Session *session;
 
-		client_fd = task_socket_accept (self->fd, in_addr, &addr_len, self);
+		client_fd = hev_task_io_socket_accept (self->fd, in_addr, &addr_len,
+					worker_task_io_yielder, self);
 		if (-1 == client_fd) {
 			fprintf (stderr, "Accept failed!\n");
 			continue;
