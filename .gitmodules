@@ -4,3 +4,6 @@
 [submodule "third-part/hev-task-system"]
 	path = third-part/hev-task-system
 	url = git://github.com/heiher/hev-task-system
+[submodule "third-part/hev-task-io"]
+	path = third-part/hev-task-io
+	url = git://github.com/heiher/hev-task-io
