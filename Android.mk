@@ -16,6 +16,7 @@
 TOP_PATH := $(call my-dir)
 include $(TOP_PATH)/third-part/ini-parser/Android.mk
 include $(TOP_PATH)/third-part/hev-task-system/Android.mk
+include $(TOP_PATH)/third-part/hev-task-io/Android.mk
 
 LOCAL_PATH = $(TOP_PATH)
 include $(CLEAR_VARS)
@@ -29,10 +30,11 @@ LOCAL_SRC_FILES := \
 	src/hev-socks5-session.c
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/third-part/ini-parser/src \
-	$(LOCAL_PATH)/third-part/hev-task-system/include
+	$(LOCAL_PATH)/third-part/hev-task-system/include \
+	$(LOCAL_PATH)/third-part/hev-task-io/include
 ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
 LOCAL_CFLAGS += -mfpu=neon
 endif
-LOCAL_STATIC_LIBRARIES := ini-parser hev-task-system
+LOCAL_STATIC_LIBRARIES := ini-parser hev-task-system hev-task-io
 include $(BUILD_EXECUTABLE)
 
