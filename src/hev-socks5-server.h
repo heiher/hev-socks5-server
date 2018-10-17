@@ -16,4 +16,3 @@ void hev_socks5_server_fini (void);
 int hev_socks5_server_run (void);
 
 #endif /* __HEV_SOCKS5_SERVER_H__ */
-
