@@ -22,6 +22,7 @@
 #include "hev-memory-allocator.h"
 #include "hev-config.h"
 #include "hev-task.h"
+#include "hev-task-io.h"
 #include "hev-task-io-socket.h"
 
 #define TIMEOUT (30 * 1000)
