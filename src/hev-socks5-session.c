@@ -129,7 +129,7 @@ hev_socks5_session_new (int client_fd, HevSocks5SessionCloseNotify notify,
     }
 
     self->base.task = task;
-    hev_task_set_priority (task, 1);
+    hev_task_set_priority (task, 9);
 
     return self;
 }
