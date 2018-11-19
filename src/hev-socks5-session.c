@@ -281,7 +281,7 @@ static int
 socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
 {
     HevTask *task;
-    int ret = -1, dns_fd, nonblock = 1;
+    int ret = -1, dns_fd;
     unsigned char buf[2048];
     ssize_t len;
     struct sockaddr_in addr_dns;
@@ -319,12 +319,9 @@ socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
     if (len <= 0)
         return -1;
 
-    dns_fd = socket (AF_INET, SOCK_DGRAM, 0);
+    dns_fd = hev_task_io_socket_socket (AF_INET, SOCK_DGRAM, 0);
     if (dns_fd == -1)
         return -1;
-
-    if (ioctl (dns_fd, FIONBIO, (char *)&nonblock) == -1)
-        goto quit;
 
     task = hev_task_self ();
     hev_task_add_fd (task, dns_fd, EPOLLIN | EPOLLOUT);
@@ -364,10 +361,10 @@ socks5_do_connect (HevSocks5Session *self)
 {
     HevTask *task;
     Socks5ReqResHeader socks5_r;
-    ssize_t len;
-    int ret, nonblock = 1;
     struct sockaddr *addr = (struct sockaddr *)&self->address;
     socklen_t addr_len = sizeof (struct sockaddr_in);
+    ssize_t len;
+    int ret;
 
     /* read socks5 request atype */
     len = hev_task_io_socket_recv (self->client_fd, &socks5_r.atype, 1,
@@ -391,12 +388,8 @@ socks5_do_connect (HevSocks5Session *self)
         return STEP_WRITE_RESPONSE_ERROR_ATYPE;
     }
 
-    self->remote_fd = socket (AF_INET, SOCK_STREAM, 0);
+    self->remote_fd = hev_task_io_socket_socket (AF_INET, SOCK_STREAM, 0);
     if (self->remote_fd == -1)
-        return STEP_WRITE_RESPONSE_ERROR_SOCK;
-
-    ret = ioctl (self->remote_fd, FIONBIO, (char *)&nonblock);
-    if (ret == -1)
         return STEP_WRITE_RESPONSE_ERROR_SOCK;
 
     task = hev_task_self ();
@@ -449,7 +442,7 @@ static int
 socks5_do_fwd_dns (HevSocks5Session *self)
 {
     HevTask *task;
-    int dns_fd, nonblock = 1;
+    int dns_fd;
     unsigned char buf[2048];
     ssize_t len;
     struct msghdr mh;
@@ -457,12 +450,9 @@ socks5_do_fwd_dns (HevSocks5Session *self)
     socklen_t addr_len = sizeof (struct sockaddr_in);
     unsigned short dns_len;
 
-    dns_fd = socket (AF_INET, SOCK_DGRAM, 0);
+    dns_fd = hev_task_io_socket_socket (AF_INET, SOCK_DGRAM, 0);
     if (dns_fd == -1)
         return STEP_CLOSE_SESSION;
-
-    if (ioctl (dns_fd, FIONBIO, (char *)&nonblock) == -1)
-        goto quit;
 
     task = hev_task_self ();
     hev_task_add_fd (task, dns_fd, EPOLLIN | EPOLLOUT);
