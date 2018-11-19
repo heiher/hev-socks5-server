@@ -21,6 +21,9 @@
 #include "hev-socks5-server.h"
 #include "hev-socks5-worker.h"
 #include "hev-config.h"
+#include "hev-task.h"
+#include "hev-task-io.h"
+#include "hev-task-io-socket.h"
 #include "hev-task-system.h"
 #include "hev-memory-allocator.h"
 
@@ -34,7 +37,7 @@ static void *work_thread_handler (void *data);
 int
 hev_socks5_server_init (void)
 {
-    int ret, nonblock = 1, reuseaddr = 1;
+    int ret, reuseaddr = 1;
     struct sockaddr_in addr;
 
     if (hev_task_system_init () < 0) {
@@ -42,7 +45,7 @@ hev_socks5_server_init (void)
         return -1;
     }
 
-    fd = socket (AF_INET, SOCK_STREAM, 0);
+    fd = hev_task_io_socket_socket (AF_INET, SOCK_STREAM, 0);
     if (fd == -1) {
         fprintf (stderr, "Create socket failed!\n");
         return -2;
@@ -55,12 +58,6 @@ hev_socks5_server_init (void)
         close (fd);
         return -3;
     }
-    ret = ioctl (fd, FIONBIO, (char *)&nonblock);
-    if (ret == -1) {
-        fprintf (stderr, "Set non-blocking failed!\n");
-        close (fd);
-        return -4;
-    }
 
     memset (&addr, 0, sizeof (addr));
     addr.sin_family = AF_INET;
@@ -70,25 +67,25 @@ hev_socks5_server_init (void)
     if (ret == -1) {
         fprintf (stderr, "Bind address failed!\n");
         close (fd);
-        return -5;
+        return -4;
     }
     ret = listen (fd, 100);
     if (ret == -1) {
         fprintf (stderr, "Listen failed!\n");
         close (fd);
-        return -6;
+        return -5;
     }
 
     if (signal (SIGPIPE, SIG_IGN) == SIG_ERR) {
         fprintf (stderr, "Set signal pipe's handler failed!\n");
         close (fd);
-        return -7;
+        return -6;
     }
 
     if (signal (SIGINT, sigint_handler) == SIG_ERR) {
         fprintf (stderr, "Set signal int's handler failed!\n");
         close (fd);
-        return -8;
+        return -7;
     }
 
     workers = hev_config_get_workers ();
@@ -96,7 +93,7 @@ hev_socks5_server_init (void)
     if (!worker_list) {
         fprintf (stderr, "Allocate worker list failed!\n");
         close (fd);
-        return -9;
+        return -8;
     }
 
     return 0;
