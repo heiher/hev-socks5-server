@@ -134,7 +134,7 @@ hev_socks5_worker_task_entry (void *data)
     hev_task_add_fd (task, self->fd, EPOLLIN);
 
     for (;;) {
-        int client_fd, ret, nonblock = 1;
+        int client_fd;
         struct sockaddr_in addr;
         struct sockaddr *in_addr = (struct sockaddr *)&addr;
         socklen_t addr_len = sizeof (addr);
@@ -153,12 +153,6 @@ hev_socks5_worker_task_entry (void *data)
         printf ("Worker %p: New client %d enter from %s:%u\n", self, client_fd,
                 inet_ntoa (addr.sin_addr), ntohs (addr.sin_port));
 #endif
-
-        ret = ioctl (client_fd, FIONBIO, (char *)&nonblock);
-        if (ret == -1) {
-            fprintf (stderr, "Set non-blocking failed!\n");
-            close (client_fd);
-        }
 
         session =
             hev_socks5_session_new (client_fd, session_close_handler, self);
