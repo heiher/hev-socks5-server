@@ -17,6 +17,9 @@ static char listen_address[16];
 static char dns_address[16];
 static unsigned short port;
 static unsigned int workers;
+static unsigned int auth_method;
+static char username[256];
+static char password[256];
 
 int
 hev_config_init (const char *config_path)
@@ -62,6 +65,16 @@ hev_config_init (const char *config_path)
     if (workers <= 0)
         workers = 1;
 
+    /* Auth:Username */
+    char *user = iniparser_getstring (ini_dict, "Auth:Username", NULL);
+    /* Auth:Password */
+    char *pass = iniparser_getstring (ini_dict, "Auth:Password", NULL);
+    if (user && pass) {
+        strncpy (username, user, 255);
+        strncpy (password, pass, 255);
+        auth_method = HEV_CONFIG_AUTH_METHOD_USERPASS;
+    }
+
     iniparser_freedict (ini_dict);
 
     return 0;
@@ -94,4 +107,22 @@ const char *
 hev_config_get_dns_address (void)
 {
     return dns_address;
+}
+
+unsigned int
+hev_config_get_auth_method (void)
+{
+    return auth_method;
+}
+
+const char *
+hev_config_get_auth_username (void)
+{
+    return username;
+}
+
+const char *
+hev_config_get_auth_password (void)
+{
+    return password;
 }
