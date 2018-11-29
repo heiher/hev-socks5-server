@@ -39,6 +39,9 @@ enum
     STEP_WRITE_AUTH_METHOD,
     STEP_WRITE_AUTH_METHOD_ERROR,
     STEP_READ_REQUEST,
+    STEP_READ_AUTH_REQUEST,
+    STEP_WRITE_AUTH_RESPONSE,
+    STEP_WRITE_AUTH_RESPONSE_ERROR,
     STEP_DO_CONNECT,
     STEP_DO_SPLICE,
     STEP_DO_DNS_FWD,
@@ -174,7 +177,7 @@ static int
 socks5_read_auth_method (HevSocks5Session *self)
 {
     Socks5AuthHeader socks5_auth;
-    int i, auth_method = 0xff;
+    int i, auth_method = hev_config_get_auth_method ();
     ssize_t len;
 
     /* read socks5 auth method header */
@@ -196,29 +199,25 @@ socks5_read_auth_method (HevSocks5Session *self)
 
     /* select socks5 auth method */
     for (i = 0; i < socks5_auth.method_len; i++) {
-        if (socks5_auth.methods[i] == 0) {
-            auth_method = 0x00;
-            break;
-        }
+        if (socks5_auth.methods[i] == auth_method)
+            return STEP_WRITE_AUTH_METHOD;
     }
 
-    if (auth_method != 0x00)
-        return STEP_WRITE_AUTH_METHOD_ERROR;
-
-    return STEP_WRITE_AUTH_METHOD;
+    return STEP_WRITE_AUTH_METHOD_ERROR;
 }
 
 static int
 socks5_write_auth_method (HevSocks5Session *self, int step)
 {
     Socks5AuthHeader socks5_auth;
+    int auth_method = hev_config_get_auth_method ();
     ssize_t len;
 
     /* write socks5 auth method */
     socks5_auth.ver = 0x05;
     switch (step) {
     case STEP_WRITE_AUTH_METHOD:
-        socks5_auth.method = 0x00;
+        socks5_auth.method = auth_method;
         break;
     case STEP_WRITE_AUTH_METHOD_ERROR:
         socks5_auth.method = 0xff;
@@ -230,7 +229,86 @@ socks5_write_auth_method (HevSocks5Session *self, int step)
     if (len <= 0)
         return STEP_CLOSE_SESSION;
 
+    if (auth_method == HEV_CONFIG_AUTH_METHOD_USERPASS)
+        return STEP_READ_AUTH_REQUEST;
+
     return STEP_READ_REQUEST;
+}
+
+static int
+socks5_read_auth_request (HevSocks5Session *self)
+{
+    unsigned char ver;
+    unsigned char ulen;
+    unsigned char plen;
+    char buf[256];
+    const char *username;
+    const char *password;
+    ssize_t len;
+
+    /* read socks5 auth request header */
+    len = hev_task_io_socket_recv (self->client_fd, &ver, 1, MSG_WAITALL,
+                                   socks5_session_task_io_yielder, self);
+    if (len <= 0 || ver != 0x01)
+        return STEP_CLOSE_SESSION;
+
+    /* read socks5 auth request ulen */
+    len = hev_task_io_socket_recv (self->client_fd, &ulen, 1, MSG_WAITALL,
+                                   socks5_session_task_io_yielder, self);
+    if (len <= 0 || ulen == 0)
+        return STEP_CLOSE_SESSION;
+
+    /* read socks5 auth request username */
+    len = hev_task_io_socket_recv (self->client_fd, buf, ulen, MSG_WAITALL,
+                                   socks5_session_task_io_yielder, self);
+    if (len != ulen)
+        return STEP_CLOSE_SESSION;
+    username = hev_config_get_auth_username ();
+    if (strncmp (username, buf, ulen) != 0)
+        return STEP_WRITE_AUTH_RESPONSE_ERROR;
+
+    /* read socks5 auth request plen */
+    len = hev_task_io_socket_recv (self->client_fd, &plen, 1, MSG_WAITALL,
+                                   socks5_session_task_io_yielder, self);
+    if (len <= 0 || plen == 0)
+        return STEP_CLOSE_SESSION;
+
+    /* read socks5 auth request password */
+    len = hev_task_io_socket_recv (self->client_fd, buf, plen, MSG_WAITALL,
+                                   socks5_session_task_io_yielder, self);
+    if (len != plen)
+        return STEP_CLOSE_SESSION;
+    password = hev_config_get_auth_password ();
+    if (strncmp (password, buf, plen) != 0)
+        return STEP_WRITE_AUTH_RESPONSE_ERROR;
+
+    return STEP_WRITE_AUTH_RESPONSE;
+}
+
+static int
+socks5_write_auth_response (HevSocks5Session *self, int step)
+{
+    unsigned char res[2];
+    ssize_t len;
+
+    res[0] = 0x05;
+    switch (step) {
+    case STEP_WRITE_AUTH_RESPONSE:
+        res[1] = 0x00;
+        step = STEP_READ_REQUEST;
+        break;
+    case STEP_WRITE_AUTH_RESPONSE_ERROR:
+        res[1] = 0xff;
+        step = STEP_CLOSE_SESSION;
+        break;
+    }
+
+    len = hev_task_io_socket_send (self->client_fd, res, 2, MSG_WAITALL,
+                                   socks5_session_task_io_yielder, self);
+    if (len <= 0)
+        return STEP_CLOSE_SESSION;
+
+    return step;
 }
 
 static int
@@ -577,6 +655,13 @@ hev_socks5_session_task_entry (void *data)
         case STEP_WRITE_AUTH_METHOD:
         case STEP_WRITE_AUTH_METHOD_ERROR:
             step = socks5_write_auth_method (self, step);
+            break;
+        case STEP_READ_AUTH_REQUEST:
+            step = socks5_read_auth_request (self);
+            break;
+        case STEP_WRITE_AUTH_RESPONSE:
+        case STEP_WRITE_AUTH_RESPONSE_ERROR:
+            step = socks5_write_auth_response (self, step);
             break;
         case STEP_READ_REQUEST:
             step = socks5_read_request (self);
