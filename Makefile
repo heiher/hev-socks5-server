@@ -18,8 +18,11 @@ SRCDIR=src
 BINDIR=bin
 BUILDDIR=build
 THIRDPARTDIR=third-part
+DESTDIR=/usr/local
 
 TARGET=$(BINDIR)/hev-socks5-server
+TARGET_CONFIG=config/main.ini
+DEST_CONFIG=/etc/socks5-server.ini
 THIRDPARTS=$(THIRDPARTDIR)/ini-parser \
 	   $(THIRDPARTDIR)/hev-task-system
 
@@ -54,6 +57,15 @@ tp-clean : $(THIRDPARTS)
 clean : tp-clean
 	$(ECHO_PREFIX) $(RM) $(BINDIR)/* $(BUILDDIR)/*
 	@echo -e $(CLEANMSG)
+
+install : $(TARGET)
+	install -d $(DESTDIR)/bin/
+	install $(TARGET) $(DESTDIR)/bin/socks5-server
+	install $(TARGET_CONFIG) /etc/socks5-server.ini
+
+uninstall :
+	rm -f $(DESTDIR)/bin/socks5-server
+	rm -f $(DEST_CONFIG)
 
 $(TARGET) : $(LDOBJS)
 	$(ECHO_PREFIX) $(CC) -o $@ $^ $(LDFLAGS)
