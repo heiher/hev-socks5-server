@@ -52,10 +52,11 @@ tp-clean : $(THIRDPARTS)
 	@$(foreach dir,$^,make --no-print-directory -C $(dir) clean;)
 
 clean : tp-clean
-	$(ECHO_PREFIX) $(RM) $(BINDIR)/* $(BUILDDIR)/*
+	$(ECHO_PREFIX) $(RM) -rf $(BINDIR) $(BUILDDIR)
 	@echo -e $(CLEANMSG)
 
 $(TARGET) : $(LDOBJS)
+	$(ECHO_PREFIX) mkdir -p $(dir $@)
 	$(ECHO_PREFIX) $(CC) -o $@ $^ $(LDFLAGS)
 	@echo -e $(LINKMSG)
 	$(ECHO_PREFIX) $(STRIP) $@
