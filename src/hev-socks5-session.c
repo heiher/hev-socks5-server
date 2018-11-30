@@ -291,7 +291,7 @@ socks5_write_auth_response (HevSocks5Session *self, int step)
     unsigned char res[2];
     ssize_t len;
 
-    res[0] = 0x05;
+    res[0] = 0x01;
     switch (step) {
     case STEP_WRITE_AUTH_RESPONSE:
         res[1] = 0x00;
