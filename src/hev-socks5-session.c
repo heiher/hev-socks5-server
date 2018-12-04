@@ -263,8 +263,9 @@ socks5_read_auth_request (HevSocks5Session *self)
                                    socks5_session_task_io_yielder, self);
     if (len != ulen)
         return STEP_CLOSE_SESSION;
+    buf[ulen] = '\0';
     username = hev_config_get_auth_username ();
-    if (strncmp (username, buf, ulen) != 0)
+    if (strcmp (username, buf) != 0)
         return STEP_WRITE_AUTH_RESPONSE_ERROR;
 
     /* read socks5 auth request plen */
@@ -278,8 +279,9 @@ socks5_read_auth_request (HevSocks5Session *self)
                                    socks5_session_task_io_yielder, self);
     if (len != plen)
         return STEP_CLOSE_SESSION;
+    buf[plen] = '\0';
     password = hev_config_get_auth_password ();
-    if (strncmp (password, buf, plen) != 0)
+    if (strcmp (password, buf) != 0)
         return STEP_WRITE_AUTH_RESPONSE_ERROR;
 
     return STEP_WRITE_AUTH_RESPONSE;
