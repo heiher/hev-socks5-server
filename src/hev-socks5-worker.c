@@ -13,7 +13,6 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/eventfd.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -23,6 +22,7 @@
 #include "hev-config.h"
 #include "hev-task.h"
 #include "hev-task-io.h"
+#include "hev-task-io-pipe.h"
 #include "hev-task-io-socket.h"
 
 #define TIMEOUT (30 * 1000)
@@ -30,7 +30,7 @@
 struct _HevSocks5Worker
 {
     int fd;
-    int event_fd;
+    int event_fds[2];
     int quit;
 
     HevTask *task_worker;
@@ -61,7 +61,8 @@ hev_socks5_worker_new (int fd)
     }
 
     self->fd = fd;
-    self->event_fd = -1;
+    self->event_fds[0] = -1;
+    self->event_fds[1] = -1;
 
     self->task_worker = hev_task_new (8192);
     if (!self->task_worker) {
@@ -108,10 +109,12 @@ hev_socks5_worker_start (HevSocks5Worker *self)
 void
 hev_socks5_worker_stop (HevSocks5Worker *self)
 {
-    if (self->event_fd == -1)
+    int val;
+
+    if (self->event_fds[1] == -1)
         return;
 
-    if (eventfd_write (self->event_fd, 1) == -1)
+    if (write (self->event_fds[1], &val, sizeof (val)) == -1)
         fprintf (stderr, "Write stop event failed!\n");
 }
 
@@ -131,7 +134,7 @@ hev_socks5_worker_task_entry (void *data)
     HevSocks5Worker *self = data;
     HevTask *task = hev_task_self ();
 
-    hev_task_add_fd (task, self->fd, EPOLLIN);
+    hev_task_add_fd (task, self->fd, POLLIN);
 
     for (;;) {
         int client_fd;
@@ -171,26 +174,16 @@ hev_socks5_event_task_entry (void *data)
 {
     HevSocks5Worker *self = data;
     HevTask *task = hev_task_self ();
-    ssize_t size;
     HevSocks5SessionBase *session;
+    int val;
 
-    self->event_fd = eventfd (0, EFD_NONBLOCK);
-    if (-1 == self->event_fd) {
+    if (-1 == hev_task_io_pipe_pipe (self->event_fds)) {
         fprintf (stderr, "Create eventfd failed!\n");
         return;
     }
 
-    hev_task_add_fd (task, self->event_fd, EPOLLIN);
-
-    for (;;) {
-        eventfd_t val;
-        size = eventfd_read (self->event_fd, &val);
-        if (-1 == size && errno == EAGAIN) {
-            hev_task_yield (HEV_TASK_WAITIO);
-            continue;
-        }
-        break;
-    }
+    hev_task_add_fd (task, self->event_fds[0], POLLIN);
+    hev_task_io_read (self->event_fds[0], &val, sizeof (val), NULL, NULL);
 
     /* set quit flag */
     self->quit = 1;
@@ -217,7 +210,8 @@ hev_socks5_event_task_entry (void *data)
 #endif
     }
 
-    close (self->event_fd);
+    close (self->event_fds[0]);
+    close (self->event_fds[0]);
 }
 
 static void
