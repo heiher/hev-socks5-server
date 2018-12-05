@@ -51,10 +51,10 @@ endif
 all : tp-all $(TARGET)
 
 tp-all : $(THIRDPARTS)
-	@$(foreach dir,$^,make --no-print-directory -C $(dir);)
+	@$(foreach dir,$^,$(MAKE) --no-print-directory -C $(dir);)
 
 tp-clean : $(THIRDPARTS)
-	@$(foreach dir,$^,make --no-print-directory -C $(dir) clean;)
+	@$(foreach dir,$^,$(MAKE) --no-print-directory -C $(dir) clean;)
 
 clean : tp-clean
 	$(ECHO_PREFIX) $(RM) -rf $(BINDIR) $(BUILDDIR)
