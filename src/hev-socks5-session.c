@@ -404,7 +404,7 @@ socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
         return -1;
 
     task = hev_task_self ();
-    hev_task_add_fd (task, dns_fd, EPOLLIN | EPOLLOUT);
+    hev_task_add_fd (task, dns_fd, POLLIN | POLLOUT);
 
     addr_dns.sin_family = AF_INET;
     addr_dns.sin_addr.s_addr = inet_addr (hev_config_get_dns_address ());
@@ -473,7 +473,7 @@ socks5_do_connect (HevSocks5Session *self)
         return STEP_WRITE_RESPONSE_ERROR_SOCK;
 
     task = hev_task_self ();
-    hev_task_add_fd (task, self->remote_fd, EPOLLIN | EPOLLOUT);
+    hev_task_add_fd (task, self->remote_fd, POLLIN | POLLOUT);
 
     /* connect */
     ret = hev_task_io_socket_connect (self->remote_fd, addr, addr_len,
@@ -535,7 +535,7 @@ socks5_do_fwd_dns (HevSocks5Session *self)
         return STEP_CLOSE_SESSION;
 
     task = hev_task_self ();
-    hev_task_add_fd (task, dns_fd, EPOLLIN | EPOLLOUT);
+    hev_task_add_fd (task, dns_fd, POLLIN | POLLOUT);
 
     /* read dns request length */
     len = hev_task_io_socket_recv (self->client_fd, &dns_len, 2, MSG_WAITALL,
@@ -647,7 +647,7 @@ hev_socks5_session_task_entry (void *data)
     HevSocks5Session *self = data;
     int step = STEP_READ_AUTH_METHOD;
 
-    hev_task_add_fd (task, self->client_fd, EPOLLIN | EPOLLOUT);
+    hev_task_add_fd (task, self->client_fd, POLLIN | POLLOUT);
 
     while (step) {
         switch (step) {
