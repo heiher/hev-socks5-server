@@ -89,7 +89,7 @@ $(TARGET) : $(LDOBJS)
 
 $(BUILDDIR)/%.dep : $(SRCDIR)/%.c
 	$(ECHO_PREFIX) mkdir -p $(dir $@)
-	$(ECHO_PREFIX) $(PP) $(CCFLAGS) -MM -MT $(@:.dep=.o) -o $@ $<
+	$(ECHO_PREFIX) $(PP) $(CCFLAGS) -MM -MT$(@:.dep=.o) -MF$@ $< 2>/dev/null
 
 $(BUILDDIR)/%.o : $(SRCDIR)/%.c
 	$(ECHO_PREFIX) mkdir -p $(dir $@)
