@@ -1,6 +1,6 @@
 # HevSocks5Server
 
-HevSocks5Server is a simple, lightweight socks5 server for Linux.
+HevSocks5Server is a simple, lightweight socks5 server for Unix.
 
 **Features**
 * standard CONNECT command supported.
@@ -9,7 +9,7 @@ HevSocks5Server is a simple, lightweight socks5 server for Linux.
 
 ## How to Build
 
-**Linux**:
+**Unix**:
 ```bash
 git clone --recursive git://github.com/heiher/hev-socks5-server
 cd hev-socks5-server
