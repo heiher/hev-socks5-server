@@ -44,7 +44,7 @@ hev_config_init (const char *config_path)
 
     /* Main:Port */
     port = iniparser_getint (ini_dict, "Main:Port", -1);
-    if (-1 == port) {
+    if (-1 == (int)port) {
         fprintf (stderr, "Get Main:Port from file %s failed!\n", config_path);
         iniparser_freedict (ini_dict);
         return -3;
