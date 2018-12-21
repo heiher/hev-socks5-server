@@ -25,7 +25,7 @@
 #include "hev-dns-query.h"
 
 #define SESSION_HP (10)
-#define TASK_STACK_SIZE (3 * 4096)
+#define TASK_STACK_SIZE (6 * 4096)
 
 static void hev_socks5_session_task_entry (void *data);
 
@@ -488,7 +488,7 @@ static int
 socks5_do_splice (HevSocks5Session *self)
 {
     hev_task_io_splice (self->client_fd, self->client_fd, self->remote_fd,
-                        self->remote_fd, 2048, socks5_session_task_io_yielder,
+                        self->remote_fd, 8192, socks5_session_task_io_yielder,
                         self);
 
     return STEP_CLOSE_SESSION;
