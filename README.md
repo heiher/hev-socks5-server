@@ -1,5 +1,7 @@
 # HevSocks5Server
 
+[![status](https://gitlab.com/hev/hev-socks5-server/badges/master/pipeline.svg)](https://gitlab.com/hev/hev-socks5-server/commits/master)
+
 HevSocks5Server is a simple, lightweight socks5 server for Unix.
 
 **Features**
