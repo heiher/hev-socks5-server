@@ -6,8 +6,7 @@ CROSS_PREFIX :=
 PP=$(CROSS_PREFIX)cpp
 CC=$(CROSS_PREFIX)gcc
 STRIP=$(CROSS_PREFIX)strip
-MARCH:=native
-CCFLAGS=-march=$(MARCH) -O3 -pipe -Wall -Werror \
+CCFLAGS=-O3 -pipe -Wall -Werror \
 		-I$(THIRDPARTDIR)/ini-parser/src \
 		-I$(THIRDPARTDIR)/hev-task-system/include
 LDFLAGS=-L$(THIRDPARTDIR)/ini-parser/bin -lini-parser \
