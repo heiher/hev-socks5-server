@@ -24,6 +24,8 @@ CONFIG=$(CONFDIR)/main.ini
 TARGET=$(BINDIR)/hev-socks5-server
 THIRDPARTS=$(THIRDPARTDIR)/ini-parser \
 	   $(THIRDPARTDIR)/hev-task-system
+THIRDPART_TARGETS=$(THIRDPARTDIR)/ini-parser/bin/libini-parser.a \
+	   $(THIRDPARTDIR)/hev-task-system/bin/libhev-task-system.a
 
 -include build.mk
 CCSRCS=$(filter %.c,$(SRCFILES))
@@ -45,12 +47,12 @@ ifeq ($(V),1)
 	undefine ECHO_PREFIX
 endif
 
-.PHONY: all clean install uninstall tp-all tp-clean
+.PHONY: all clean install uninstall tp-clean
 
-all : tp-all $(TARGET)
+all : $(TARGET)
 
-tp-all : $(THIRDPARTS)
-	@$(foreach dir,$^,$(MAKE) --no-print-directory -C $(dir);)
+$(THIRDPART_TARGETS) :
+	@$(foreach dir,$(THIRDPARTS),$(MAKE) --no-print-directory -C $(dir);)
 
 tp-clean : $(THIRDPARTS)
 	@$(foreach dir,$^,$(MAKE) --no-print-directory -C $(dir) clean;)
@@ -59,9 +61,7 @@ clean : tp-clean
 	$(ECHO_PREFIX) $(RM) -rf $(BINDIR) $(BUILDDIR)
 	@printf $(CLEANMSG) $(PROJECT)
 
-install : tp-all \
-	$(INSTDIR)/bin/$(PROJECT) \
-	$(INSTDIR)/etc/$(PROJECT).conf
+install : $(INSTDIR)/bin/$(PROJECT) $(INSTDIR)/etc/$(PROJECT).conf
 
 uninstall :
 	$(ECHO_PREFIX) $(RM) -rf $(INSTDIR)/bin/$(PROJECT)
@@ -79,9 +79,9 @@ $(INSTDIR)/etc/$(PROJECT).conf : $(CONFIG)
 	$(ECHO_PREFIX) install -m 0644 $< $@
 	@printf $(INSTMSG) $< $@
 
-$(TARGET) : $(LDOBJS)
+$(TARGET) : $(LDOBJS) $(THIRDPART_TARGETS)
 	$(ECHO_PREFIX) mkdir -p $(dir $@)
-	$(ECHO_PREFIX) $(CC) -o $@ $^ $(LDFLAGS)
+	$(ECHO_PREFIX) $(CC) -o $@ $(LDOBJS) $(LDFLAGS)
 	@printf $(LINKMSG) $@
 	$(ECHO_PREFIX) $(STRIP) $@
 	@printf $(STRIPMSG) $@
