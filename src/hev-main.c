@@ -33,7 +33,9 @@ run_as_daemon (const char *pid_file)
         return;
     }
 
-    daemon (0, 0);
+    if (daemon (0, 0)) {
+        /* ignore return value */
+    }
 
     fprintf (fp, "%u", getpid ());
     fclose (fp);
