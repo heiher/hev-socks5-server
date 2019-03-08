@@ -27,6 +27,16 @@ cd jni
 ndk-build
 ```
 
+## How to Use
+
+```bash
+# Run with config file.
+bin/hev-socks5-server conf/main.ini
+
+# Run as a daemon with specific pid file.
+bin/hev-socks5-server conf/main.ini /run/hev-socks5-server.pid
+```
+
 ## Authors
 * **Heiher** - https://hev.cc
 
