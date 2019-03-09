@@ -29,12 +29,34 @@ ndk-build
 
 ## How to Use
 
-```bash
-# Run with config file.
-bin/hev-socks5-server conf/main.ini
+### Config
 
-# Run as a daemon with specific pid file.
-bin/hev-socks5-server conf/main.ini /run/hev-socks5-server.pid
+```ini
+[Main]
+; Worker threads
+Workers=4
+; Listen port
+Port=1080
+; Listen ipv4 address
+ListenAddress=0.0.0.0
+DNSAddress=8.8.8.8
+
+;[Auth]
+;Username=
+;Password=
+
+;[Misc]
+; If present, run as a daemon with this pid file
+;PidFile=/run/hev-socks5-server.pid
+; If present, set rlimit nofile; else use default value of environment
+; -1: unlimit
+;LimitNOFile=-1
+```
+
+### Run
+
+```bash
+bin/hev-socks5-server conf/main.ini
 ```
 
 ## Authors
