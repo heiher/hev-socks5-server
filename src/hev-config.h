@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-config.h
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 Heiher.
+ Copyright   : Copyright (c) 2017 - 2019 Heiher.
  Description : Config
  ============================================================================
  */
@@ -30,5 +30,7 @@ const char *hev_config_get_dns_address (void);
 unsigned int hev_config_get_auth_method (void);
 const char *hev_config_get_auth_username (void);
 const char *hev_config_get_auth_password (void);
+
+const char *hev_config_get_misc_pid_file (void);
 
 #endif /* __HEV_CONFIG_H__ */

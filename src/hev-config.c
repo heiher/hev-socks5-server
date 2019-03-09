@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-config.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 Heiher.
+ Copyright   : Copyright (c) 2017 - 2019 Heiher.
  Description : Config
  ============================================================================
  */
@@ -20,6 +20,7 @@ static unsigned int workers;
 static unsigned int auth_method;
 static char username[256];
 static char password[256];
+static char pid_file[1024];
 
 int
 hev_config_init (const char *config_path)
@@ -75,6 +76,11 @@ hev_config_init (const char *config_path)
         auth_method = HEV_CONFIG_AUTH_METHOD_USERPASS;
     }
 
+    /* Misc:PidFile */
+    char *path = iniparser_getstring (ini_dict, "Misc:PidFile", NULL);
+    if (path)
+        strncpy (pid_file, path, 1023);
+
     iniparser_freedict (ini_dict);
 
     return 0;
@@ -125,4 +131,13 @@ const char *
 hev_config_get_auth_password (void)
 {
     return password;
+}
+
+const char *
+hev_config_get_misc_pid_file (void)
+{
+    if ('\0' == pid_file[0])
+        return NULL;
+
+    return pid_file;
 }
