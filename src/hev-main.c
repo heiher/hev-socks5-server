@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/resource.h>
 
 #include "hev-main.h"
 #include "hev-config.h"
@@ -41,10 +42,30 @@ run_as_daemon (const char *pid_file)
     fclose (fp);
 }
 
+static int
+set_limit_nofile (int limit_nofile)
+{
+    struct rlimit limit = {
+        .rlim_cur = RLIM_INFINITY,
+        .rlim_max = RLIM_INFINITY,
+    };
+
+    if (-1 > limit_nofile)
+        return 0;
+
+    if (0 <= limit_nofile) {
+        limit.rlim_cur = limit_nofile;
+        limit.rlim_max = limit_nofile;
+    }
+
+    return setrlimit (RLIMIT_NOFILE, &limit);
+}
+
 int
 main (int argc, char *argv[])
 {
     const char *pid_file;
+    int limit_nofile;
 
     if (2 != argc) {
         show_help (argv[0]);
@@ -56,6 +77,12 @@ main (int argc, char *argv[])
 
     if (0 > hev_socks5_server_init ())
         return -3;
+
+    limit_nofile = hev_config_get_misc_limit_nofile ();
+    if (0 > set_limit_nofile (limit_nofile)) {
+        fprintf (stderr, "Set limit nofile failed!\n");
+        return -4;
+    }
 
     pid_file = hev_config_get_misc_pid_file ();
     if (pid_file)
