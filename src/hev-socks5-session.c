@@ -25,7 +25,7 @@
 #include "hev-dns-query.h"
 
 #define SESSION_HP (10)
-#define TASK_STACK_SIZE (6 * 4096)
+#define TASK_STACK_SIZE (8192)
 
 static void hev_socks5_session_task_entry (void *data);
 
