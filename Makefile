@@ -39,6 +39,12 @@ CLEANMSG="\e[1;34mCLEAN\e[0m %s\n"
 INSTMSG="\e[1;34mINST\e[0m  %s -> %s\n"
 UNINSMSG="\e[1;34mUNINS\e[0m %s\n"
 
+ENABLE_STATIC :=
+ifeq ($(ENABLE_STATIC),1)
+	CCFLAGS+=-static
+	LDFLAGS+=-static
+endif
+
 V :=
 ECHO_PREFIX := @
 ifeq ($(V),1)
