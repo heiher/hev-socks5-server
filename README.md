@@ -16,6 +16,9 @@ HevSocks5Server is a simple, lightweight socks5 server for Unix.
 git clone --recursive git://github.com/heiher/hev-socks5-server
 cd hev-socks5-server
 make
+
+# statically link
+make ENABLE_STATIC=1
 ```
 
 **Android**:
