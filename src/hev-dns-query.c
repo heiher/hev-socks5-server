@@ -2,12 +2,12 @@
  ============================================================================
  Name        : hev-dns-query.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2013 everyone.
+ Copyright   : Copyright (c) 2013 - 2019 everyone.
  Description : Simple DNS query generator
  ============================================================================
  */
 
-#include <string.h>
+#include <stddef.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -38,7 +38,7 @@ hev_dns_query_generate (const char *domain, void *buf, size_t len)
     HevDNSHeader *header = (HevDNSHeader *)buf;
     ssize_t i;
     unsigned char c = 0, *buffer = buf;
-    ssize_t size = strlen (domain);
+    ssize_t size = __builtin_strlen (domain);
 
     /* checking domain length */
     if ((len - sizeof (HevDNSHeader) - 2 - 4) < size)
@@ -65,7 +65,7 @@ hev_dns_query_generate (const char *domain, void *buf, size_t len)
     buffer[sizeof (HevDNSHeader) + 1 + size + 3] = 0;
     buffer[sizeof (HevDNSHeader) + 1 + size + 4] = 1;
     /* dns resolve header */
-    memset (header, 0, sizeof (HevDNSHeader));
+    __builtin_bzero (header, sizeof (HevDNSHeader));
     header->id = htons (0x1234);
     header->rd = 1;
     header->qdcount = htons (1);
