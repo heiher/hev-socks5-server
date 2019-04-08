@@ -36,12 +36,13 @@ ssize_t
 hev_dns_query_generate (const char *domain, void *buf, size_t len)
 {
     HevDNSHeader *header = (HevDNSHeader *)buf;
-    ssize_t i;
     unsigned char c = 0, *buffer = buf;
-    ssize_t size = __builtin_strlen (domain);
+    size_t size = __builtin_strlen (domain);
+    const size_t hlen = sizeof (HevDNSHeader);
+    ssize_t i;
 
     /* checking domain length */
-    if ((len - sizeof (HevDNSHeader) - 2 - 4) < size)
+    if ((len - hlen - 1 - 1 - 2 - 2) < size)
         return -1;
 
     /* copy domain to queries aera */
@@ -54,23 +55,23 @@ hev_dns_query_generate (const char *domain, void *buf, size_t len)
             b = domain[i];
             c++;
         }
-        buffer[sizeof (HevDNSHeader) + 1 + i] = b;
+        buffer[hlen + 1 + i] = b;
     }
-    buffer[sizeof (HevDNSHeader)] = c;
-    buffer[sizeof (HevDNSHeader) + 1 + size] = 0;
+    buffer[hlen] = c;
+    buffer[hlen + 1 + size] = 0;
     /* type */
-    buffer[sizeof (HevDNSHeader) + 1 + size + 1] = 0;
-    buffer[sizeof (HevDNSHeader) + 1 + size + 2] = 1;
+    buffer[hlen + 1 + size + 1] = 0;
+    buffer[hlen + 1 + size + 2] = 1;
     /* class */
-    buffer[sizeof (HevDNSHeader) + 1 + size + 3] = 0;
-    buffer[sizeof (HevDNSHeader) + 1 + size + 4] = 1;
+    buffer[hlen + 1 + size + 3] = 0;
+    buffer[hlen + 1 + size + 4] = 1;
     /* dns resolve header */
-    __builtin_bzero (header, sizeof (HevDNSHeader));
+    __builtin_bzero (header, hlen);
     header->id = htons (0x1234);
     header->rd = 1;
     header->qdcount = htons (1);
-    /* size */
-    size += sizeof (HevDNSHeader) + 6;
+    /* size: header + 1st label len + domain len + NUL + type + class */
+    size += hlen + 1 + 1 + 2 + 2;
 
     return size;
 }
@@ -79,59 +80,59 @@ unsigned int
 hev_dns_query_parse (const void *buf, size_t len)
 {
     HevDNSHeader *header = (HevDNSHeader *)buf;
-    size_t i = 0, offset = sizeof (HevDNSHeader);
-    unsigned int *resp = NULL;
     const unsigned char *buffer = buf;
+    size_t i = 0, offset = sizeof (HevDNSHeader);
 
-    if (sizeof (HevDNSHeader) > len)
-        return 0;
-
-    if (header->ancount == 0)
+    if ((sizeof (HevDNSHeader) > len) || (0 == header->ancount))
         return 0;
 
     header->qdcount = ntohs (header->qdcount);
     header->ancount = ntohs (header->ancount);
-    /* skip queries */
-    for (i = 0; i < header->qdcount; i++, offset += 4) {
-        for (; offset < len;) {
-            if (buffer[offset] == 0) {
-                offset += 1;
-                break;
-            } else if (buffer[offset] & 0xc0) {
-                offset += 2;
-                break;
-            } else {
-                offset += (buffer[offset] + 1);
-            }
-        }
-    }
-    /* goto first a type answer resource area */
-    for (i = 0; i < header->ancount; i++) {
-        for (; offset < len;) {
-            if (buffer[offset] == 0) {
-                offset += 1;
-                break;
-            } else if (buffer[offset] & 0xc0) {
-                offset += 2;
-                break;
-            } else {
-                offset += (buffer[offset] + 1);
-            }
-        }
-        offset += 8;
-        /* checking the answer is valid */
-        if ((offset - 7) >= len)
-            return 0;
-        /* is a type */
-        if ((buffer[offset - 8] == 0x00) && (buffer[offset - 7] == 0x01))
-            break;
-        offset += 2 + (buffer[offset + 1] + (buffer[offset] << 8));
-    }
-    /* checking resource length */
-    if (((offset + 5) >= len) || (buffer[offset] != 0x00) ||
-        (buffer[offset + 1] != 0x04))
-        return 0;
-    resp = (unsigned int *)&buffer[offset + 2];
 
-    return *resp;
+    /* skip queries */
+    for (i = 0; i < header->qdcount; i++) {
+        for (; offset < len;) {
+            if (buffer[offset] == 0) {
+                offset += 1;
+                break;
+            } else if (buffer[offset] & 0xc0) {
+                offset += 2;
+                break;
+            } else {
+                offset += (buffer[offset] + 1);
+            }
+        }
+        offset += 4;
+    }
+
+    /* get address of first 'a' answer */
+    for (i = 0; i < header->ancount; i++) {
+        int is_a = 0;
+        size_t rdlen;
+
+        for (; offset < len;) {
+            if (buffer[offset] == 0) {
+                offset += 1;
+                break;
+            } else if (buffer[offset] & 0xc0) {
+                offset += 2;
+                break;
+            } else {
+                offset += (buffer[offset] + 1);
+            }
+        }
+        if ((offset + 9) >= len)
+            return 0;
+        if ((0x00 == buffer[offset]) && (0x01 == buffer[offset + 1]))
+            is_a = 1;
+        rdlen = buffer[offset + 9] + (buffer[offset + 8] << 8);
+        offset += 2 + 2 + 4 + 2 + rdlen;
+        if (offset > len)
+            return 0;
+
+        if (is_a)
+            return *(unsigned int *)(buffer + offset - rdlen);
+    }
+
+    return 0;
 }
