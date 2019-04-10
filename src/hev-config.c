@@ -13,8 +13,8 @@
 #include "hev-config.h"
 #include "hev-config-const.h"
 
-static char listen_address[16];
-static char dns_address[16];
+static char listen_address[64];
+static char dns_address[64];
 static unsigned short port;
 static unsigned int workers;
 static unsigned int auth_method;
@@ -42,7 +42,7 @@ hev_config_init (const char *config_path)
         iniparser_freedict (ini_dict);
         return -2;
     }
-    strncpy (listen_address, address, 15);
+    strncpy (listen_address, address, 63);
 
     /* Main:Port */
     port = iniparser_getint (ini_dict, "Main:Port", -1);
@@ -60,7 +60,7 @@ hev_config_init (const char *config_path)
         iniparser_freedict (ini_dict);
         return -4;
     }
-    strncpy (dns_address, address, 15);
+    strncpy (dns_address, address, 63);
 
     /* Main:Workers */
     workers = iniparser_getint (ini_dict, "Main:Workers", 1);
