@@ -33,7 +33,7 @@ struct _HevDNSHeader
 } __attribute__ ((packed));
 
 ssize_t
-hev_dns_query_generate (const char *domain, void *buf, size_t len)
+hev_dns_query_generate (const char *domain, int af, void *buf, size_t len)
 {
     HevDNSHeader *header = (HevDNSHeader *)buf;
     unsigned char c = 0, *buffer = buf;
@@ -61,7 +61,7 @@ hev_dns_query_generate (const char *domain, void *buf, size_t len)
     buffer[hlen + 1 + size] = 0;
     /* type */
     buffer[hlen + 1 + size + 1] = 0;
-    buffer[hlen + 1 + size + 2] = 1;
+    buffer[hlen + 1 + size + 2] = (AF_INET6 == af) ? 0x1c : 1;
     /* class */
     buffer[hlen + 1 + size + 3] = 0;
     buffer[hlen + 1 + size + 4] = 1;
@@ -76,15 +76,15 @@ hev_dns_query_generate (const char *domain, void *buf, size_t len)
     return size;
 }
 
-unsigned int
-hev_dns_query_parse (const void *buf, size_t len)
+int
+hev_dns_answer_parse (const void *buf, size_t len, int af, void *addr)
 {
     HevDNSHeader *header = (HevDNSHeader *)buf;
     const unsigned char *buffer = buf;
     size_t i = 0, offset = sizeof (HevDNSHeader);
 
     if ((sizeof (HevDNSHeader) > len) || (0 == header->ancount))
-        return 0;
+        return -1;
 
     header->qdcount = ntohs (header->qdcount);
     header->ancount = ntohs (header->ancount);
@@ -107,7 +107,7 @@ hev_dns_query_parse (const void *buf, size_t len)
 
     /* get address of first 'a' answer */
     for (i = 0; i < header->ancount; i++) {
-        int is_a = 0;
+        int atype = 0;
         size_t rdlen;
 
         for (; offset < len;) {
@@ -122,17 +122,26 @@ hev_dns_query_parse (const void *buf, size_t len)
             }
         }
         if ((offset + 9) >= len)
-            return 0;
-        if ((0x00 == buffer[offset]) && (0x01 == buffer[offset + 1]))
-            is_a = 1;
+            return -1;
+        if (0x00 == buffer[offset]) {
+            if (0x01 == buffer[offset + 1])
+                atype = AF_INET;
+            else if (0x1c == buffer[offset + 1])
+                atype = AF_INET6;
+        }
         rdlen = buffer[offset + 9] + (buffer[offset + 8] << 8);
         offset += 2 + 2 + 4 + 2 + rdlen;
         if (offset > len)
-            return 0;
+            return -1;
 
-        if (is_a)
-            return *(unsigned int *)(buffer + offset - rdlen);
+        if (af == atype) {
+            if (AF_INET == af)
+                __builtin_memcpy (addr, buffer + offset - rdlen, 4);
+            else if (AF_INET6 == af)
+                __builtin_memcpy (addr, buffer + offset - rdlen, 16);
+            return 0;
+        }
     }
 
-    return 0;
+    return -1;
 }
