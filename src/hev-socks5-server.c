@@ -14,7 +14,6 @@
 #include <signal.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -45,9 +44,12 @@ static int
 hev_socks5_server_socket (int reuseport)
 {
     int fd, ret, reuse = 1;
-    struct sockaddr_in addr;
+    struct sockaddr_in6 addr6 = { 0 };
+    struct sockaddr *addr = (struct sockaddr *)&addr6;
+    const socklen_t addr_len = sizeof (addr6);
+    const char *address = hev_config_get_listen_address ();
 
-    fd = hev_task_io_socket_socket (AF_INET, SOCK_STREAM, 0);
+    fd = hev_task_io_socket_socket (AF_INET6, SOCK_STREAM, 0);
     if (fd == -1) {
         fprintf (stderr, "Create socket failed!\n");
         return -1;
@@ -69,22 +71,30 @@ hev_socks5_server_socket (int reuseport)
         }
     }
 
-    memset (&addr, 0, sizeof (addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr (hev_config_get_listen_address ());
-    addr.sin_port = htons (hev_config_get_port ());
-    ret = bind (fd, (struct sockaddr *)&addr, (socklen_t)sizeof (addr));
+    addr6.sin6_family = AF_INET6;
+    addr6.sin6_port = htons (hev_config_get_port ());
+    if (inet_pton (AF_INET, address, &addr6.sin6_addr.s6_addr[12]) == 1) {
+        ((unsigned short *)&addr6.sin6_addr)[5] = 0xffff;
+    } else {
+        if (inet_pton (AF_INET6, address, &addr6.sin6_addr) != 1) {
+            fprintf (stderr, "Parse address failed!\n");
+            close (fd);
+            return -4;
+        }
+    }
+
+    ret = bind (fd, addr, addr_len);
     if (ret == -1) {
         fprintf (stderr, "Bind address failed!\n");
         close (fd);
-        return -4;
+        return -5;
     }
 
     ret = listen (fd, 100);
     if (ret == -1) {
         fprintf (stderr, "Listen failed!\n");
         close (fd);
-        return -5;
+        return -6;
     }
 
     return fd;
