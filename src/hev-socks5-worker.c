@@ -11,8 +11,6 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -138,12 +136,12 @@ hev_socks5_worker_task_entry (void *data)
 
     for (;;) {
         int client_fd;
-        struct sockaddr_in addr;
-        struct sockaddr *in_addr = (struct sockaddr *)&addr;
-        socklen_t addr_len = sizeof (addr);
+        struct sockaddr_in6 addr6;
+        struct sockaddr *addr = (struct sockaddr *)&addr6;
+        socklen_t addr_len = sizeof (addr6);
         HevSocks5Session *session;
 
-        client_fd = hev_task_io_socket_accept (self->fd, in_addr, &addr_len,
+        client_fd = hev_task_io_socket_accept (self->fd, addr, &addr_len,
                                                worker_task_io_yielder, self);
         if (-1 == client_fd) {
             fprintf (stderr, "Accept failed!\n");
@@ -153,8 +151,16 @@ hev_socks5_worker_task_entry (void *data)
         }
 
 #ifdef _DEBUG
-        printf ("Worker %p: New client %d enter from %s:%u\n", self, client_fd,
-                inet_ntoa (addr.sin_addr), ntohs (addr.sin_port));
+        {
+            char buf[64], *sa = NULL;
+            unsigned short port = 0;
+            if (sizeof (addr6) == addr_len) {
+                sa = inet_ntop (AF_INET6, &addr6.sin6_addr, buf, sizeof (buf));
+                port = ntohs (addr6.sin6_port);
+            }
+            printf ("Worker %p: New client %d enter from [%s]:%u\n", self,
+                    client_fd, sa, port);
+        }
 #endif
 
         session =
