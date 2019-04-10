@@ -394,8 +394,8 @@ socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
         return 0;
 
     /* do dns resolve */
-    len =
-        hev_dns_query_generate ((const char *)socks5_r->domain.addr, buf, 2048);
+    len = hev_dns_query_generate ((const char *)socks5_r->domain.addr, AF_INET,
+                                  buf, 2048);
     if (len <= 0)
         return -1;
 
@@ -425,8 +425,7 @@ socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
     if (len <= 0)
         goto quit;
 
-    self->address.sin_addr.s_addr = hev_dns_query_parse (buf, len);
-    if (self->address.sin_addr.s_addr == INADDR_NONE)
+    if (hev_dns_answer_parse (buf, len, AF_INET, &self->address.sin_addr) < 0)
         goto quit;
 
     ret = 0;
