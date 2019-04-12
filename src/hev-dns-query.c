@@ -7,7 +7,7 @@
  ============================================================================
  */
 
-#include <stddef.h>
+#include <stdint.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -36,7 +36,7 @@ ssize_t
 hev_dns_query_generate (const char *domain, int af, void *buf, size_t len)
 {
     HevDNSHeader *header = (HevDNSHeader *)buf;
-    unsigned char c = 0, *buffer = buf;
+    uint8_t c = 0, *buffer = buf;
     size_t size = __builtin_strlen (domain);
     const size_t hlen = sizeof (HevDNSHeader);
     ssize_t i;
@@ -47,7 +47,7 @@ hev_dns_query_generate (const char *domain, int af, void *buf, size_t len)
 
     /* copy domain to queries aera */
     for (i = size - 1; i >= 0; i--) {
-        unsigned char b = 0;
+        uint8_t b = 0;
         if ('.' == domain[i]) {
             b = c;
             c = 0;
@@ -80,7 +80,7 @@ int
 hev_dns_answer_parse (const void *buf, size_t len, int af, void *addr)
 {
     HevDNSHeader *header = (HevDNSHeader *)buf;
-    const unsigned char *buffer = buf;
+    const uint8_t *buffer = buf;
     size_t i = 0, offset = sizeof (HevDNSHeader);
 
     if ((sizeof (HevDNSHeader) > len) || (0 == header->ancount))
