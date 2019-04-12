@@ -56,12 +56,11 @@ struct _HevSocks5Session
 {
     HevSocks5SessionBase base;
 
-    int mode;
-
     int client_fd;
     int remote_fd;
     int ref_count;
 
+    int s5_cmd;
     struct sockaddr_in6 addr;
 
     HevSocks5SessionCloseNotify notify;
@@ -331,6 +330,8 @@ socks5_read_request (HevSocks5Session *self)
     if (socks5_r.ver != 0x05)
         return STEP_CLOSE_SESSION;
 
+    self->s5_cmd = socks5_r.cmd;
+
     switch (socks5_r.cmd) {
     case 0x01: /* connect */
         return STEP_DO_CONNECT;
@@ -570,9 +571,6 @@ socks5_do_dns_fwd (HevSocks5Session *self)
     const char *address = hev_config_get_dns_address ();
     ssize_t len;
 
-    /* set to dns fwd mode */
-    self->mode = 1;
-
     /* read socks5 request body */
     len = hev_task_io_socket_recv (self->client_fd, &socks5_r.atype, 7,
                                    MSG_WAITALL, socks5_session_task_io_yielder,
@@ -675,7 +673,10 @@ socks5_write_response (HevSocks5Session *self, int step)
     switch (step) {
     case STEP_WRITE_RESPONSE:
         socks5_r.rep = 0x00;
-        next_step = self->mode ? STEP_DO_FWD_DNS : STEP_DO_SPLICE;
+        if (0x04 == self->s5_cmd) /* dns fwd */
+            next_step = STEP_DO_FWD_DNS;
+        else
+            next_step = STEP_DO_SPLICE;
         break;
     case STEP_WRITE_RESPONSE_ERROR_CMD:
         socks5_r.rep = 0x07;
