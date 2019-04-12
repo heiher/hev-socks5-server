@@ -2,11 +2,12 @@
  ============================================================================
  Name        : hev-socks5-session.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 everyone.
+ Copyright   : Copyright (c) 2017 - 2019 everyone.
  Description : Socks5 session
  ============================================================================
  */
 
+#include <stdint.h>
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
@@ -69,41 +70,41 @@ struct _HevSocks5Session
 
 struct _Socks5AuthHeader
 {
-    unsigned char ver;
+    uint8_t ver;
     union
     {
-        unsigned char method;
-        unsigned char method_len;
+        uint8_t method;
+        uint8_t method_len;
     };
-    unsigned char methods[256];
+    uint8_t methods[256];
 } __attribute__ ((packed));
 
 struct _Socks5ReqResHeader
 {
-    unsigned char ver;
+    uint8_t ver;
     union
     {
-        unsigned char cmd;
-        unsigned char rep;
+        uint8_t cmd;
+        uint8_t rep;
     };
-    unsigned char rsv;
-    unsigned char atype;
+    uint8_t rsv;
+    uint8_t atype;
     union
     {
         struct
         {
-            unsigned int addr;
-            unsigned short port;
+            uint32_t addr;
+            uint16_t port;
         } ipv4;
         struct
         {
-            unsigned char addr[16];
-            unsigned short port;
+            uint8_t addr[16];
+            uint16_t port;
         } ipv6;
         struct
         {
-            unsigned char len;
-            unsigned char addr[256 + 2];
+            uint8_t len;
+            uint8_t addr[256 + 2];
         } domain;
     };
 } __attribute__ ((packed));
@@ -240,10 +241,8 @@ socks5_write_auth_method (HevSocks5Session *self, int step)
 static int
 socks5_read_auth_request (HevSocks5Session *self)
 {
-    unsigned char ver;
-    unsigned char ulen;
-    unsigned char plen;
     char buf[256];
+    uint8_t ver, ulen, plen;
     const char *username;
     const char *password;
     ssize_t len;
@@ -292,7 +291,7 @@ socks5_read_auth_request (HevSocks5Session *self)
 static int
 socks5_write_auth_response (HevSocks5Session *self, int step)
 {
-    unsigned char res[2];
+    uint8_t res[2];
     ssize_t len;
 
     res[0] = 0x01;
@@ -356,8 +355,8 @@ socks5_parse_addr_ipv4 (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
 
     self->addr.sin6_family = AF_INET6;
     self->addr.sin6_port = socks5_r->ipv4.port;
-    ((unsigned short *)&self->addr.sin6_addr)[5] = 0xffff;
-    ((unsigned int *)&self->addr.sin6_addr)[3] = socks5_r->ipv4.addr;
+    ((uint16_t *)&self->addr.sin6_addr)[5] = 0xffff;
+    ((uint32_t *)&self->addr.sin6_addr)[3] = socks5_r->ipv4.addr;
 
     return 0;
 }
@@ -386,7 +385,7 @@ socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
 {
     HevTask *task;
     int dns_fd;
-    unsigned char buf[2048];
+    uint8_t buf[2048];
     ssize_t len;
     struct sockaddr_in6 addr6;
     struct sockaddr *addr = (struct sockaddr *)&addr6;
@@ -416,7 +415,7 @@ socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
     socks5_r->domain.addr[socks5_r->domain.len] = '\0';
     if (inet_pton (AF_INET, (const char *)socks5_r->domain.addr,
                    &self->addr.sin6_addr.s6_addr[12]) == 1) {
-        ((unsigned short *)&self->addr.sin6_addr)[5] = 0xffff;
+        ((uint16_t *)&self->addr.sin6_addr)[5] = 0xffff;
         return 0;
     }
     if (inet_pton (AF_INET6, (const char *)socks5_r->domain.addr,
@@ -434,7 +433,7 @@ socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
     addr6.sin6_family = AF_INET6;
     addr6.sin6_port = htons (53);
     if (inet_pton (AF_INET, address, &addr6.sin6_addr.s6_addr[12]) == 1) {
-        ((unsigned short *)&addr6.sin6_addr)[5] = 0xffff;
+        ((uint16_t *)&addr6.sin6_addr)[5] = 0xffff;
     } else {
         if (inet_pton (AF_INET6, address, &addr6.sin6_addr) != 1) {
             close (dns_fd);
@@ -468,7 +467,7 @@ socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
 
     if (hev_dns_answer_parse (buf, len, AF_INET,
                               &self->addr.sin6_addr.s6_addr[12]) == 0) {
-        ((unsigned short *)&self->addr.sin6_addr)[5] = 0xffff;
+        ((uint16_t *)&self->addr.sin6_addr)[5] = 0xffff;
         close (dns_fd);
         return 0;
     }
@@ -582,7 +581,7 @@ socks5_do_dns_fwd (HevSocks5Session *self)
     self->addr.sin6_family = AF_INET6;
     self->addr.sin6_port = htons (53);
     if (inet_pton (AF_INET, address, &self->addr.sin6_addr.s6_addr[12]) == 1) {
-        ((unsigned short *)&self->addr.sin6_addr)[5] = 0xffff;
+        ((uint16_t *)&self->addr.sin6_addr)[5] = 0xffff;
     } else {
         if (inet_pton (AF_INET6, address, &self->addr.sin6_addr) != 1)
             return STEP_CLOSE_SESSION;
@@ -596,11 +595,11 @@ socks5_do_fwd_dns (HevSocks5Session *self)
 {
     HevTask *task;
     int dns_fd;
-    unsigned char buf[2048];
+    uint8_t buf[2048];
     ssize_t len;
+    uint16_t dns_len;
     struct msghdr mh;
     struct iovec iov[2];
-    unsigned short dns_len;
     struct sockaddr *addr = (struct sockaddr *)&self->addr;
     const socklen_t addr_len = sizeof (self->addr);
 
@@ -696,7 +695,7 @@ socks5_write_response (HevSocks5Session *self, int step)
         len = 10;
         socks5_r.atype = 0x01;
         socks5_r.ipv4.port = self->addr.sin6_port;
-        socks5_r.ipv4.addr = ((unsigned int *)&self->addr.sin6_addr)[3];
+        socks5_r.ipv4.addr = ((uint32_t *)&self->addr.sin6_addr)[3];
     } else {
         len = 22;
         socks5_r.atype = 0x04;
