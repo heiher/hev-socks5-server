@@ -5,9 +5,10 @@
 HevSocks5Server is a simple, lightweight socks5 server for Unix.
 
 **Features**
-* standard CONNECT command supported.
-* private DNSFWD command supported.
+* standard `CONNECT` command.
+* private `DNSFWD` command. (see [tproxy](https://gitlab.com/hev/hev-socks5-tproxy))
 * username/password authentication.
+* IPv4/IPv6. (dual stack)
 
 ## How to Build
 
@@ -40,8 +41,13 @@ ndk-build
 Workers=4
 ; Listen port
 Port=1080
-; Listen ipv4 address
+; Listen address
+;  ipv4
+;  ipv6
 ListenAddress=0.0.0.0
+; DNS server address
+;  ipv4
+;  ipv6
 DNSAddress=8.8.8.8
 
 ;[Auth]
