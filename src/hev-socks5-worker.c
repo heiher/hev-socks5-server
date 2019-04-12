@@ -2,12 +2,13 @@
  ============================================================================
  Name        : hev-socks5-worker.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 everyone.
+ Copyright   : Copyright (c) 2017 - 2019 everyone.
  Description : Socks5 worker
  ============================================================================
  */
 
 #include <stdio.h>
+#include <stdint.h>
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
@@ -153,7 +154,7 @@ hev_socks5_worker_task_entry (void *data)
 #ifdef _DEBUG
         {
             char buf[64], *sa = NULL;
-            unsigned short port = 0;
+            uint16_t port = 0;
             if (sizeof (addr6) == addr_len) {
                 sa = inet_ntop (AF_INET6, &addr6.sin6_addr, buf, sizeof (buf));
                 port = ntohs (addr6.sin6_port);
