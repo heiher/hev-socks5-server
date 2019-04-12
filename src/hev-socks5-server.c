@@ -2,12 +2,13 @@
  ============================================================================
  Name        : hev-socks5-server.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 everyone.
+ Copyright   : Copyright (c) 2017 - 2019 everyone.
  Description : Socks5 server
  ============================================================================
  */
 
 #include <stdio.h>
+#include <stdint.h>
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
@@ -74,7 +75,7 @@ hev_socks5_server_socket (int reuseport)
     addr6.sin6_family = AF_INET6;
     addr6.sin6_port = htons (hev_config_get_port ());
     if (inet_pton (AF_INET, address, &addr6.sin6_addr.s6_addr[12]) == 1) {
-        ((unsigned short *)&addr6.sin6_addr)[5] = 0xffff;
+        ((uint16_t *)&addr6.sin6_addr)[5] = 0xffff;
     } else {
         if (inet_pton (AF_INET6, address, &addr6.sin6_addr) != 1) {
             fprintf (stderr, "Parse address failed!\n");
