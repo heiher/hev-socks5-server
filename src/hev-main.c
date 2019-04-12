@@ -35,9 +35,12 @@ run_as_daemon (const char *pid_file)
         return;
     }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     if (daemon (0, 0)) {
         /* ignore return value */
     }
+#pragma GCC diagnostic pop
 
     fprintf (fp, "%u", getpid ());
     fclose (fp);
