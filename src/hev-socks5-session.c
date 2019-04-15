@@ -387,10 +387,8 @@ socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
     int dns_fd;
     uint8_t buf[2048];
     ssize_t len;
-    struct sockaddr_in6 addr6;
-    struct sockaddr *addr = (struct sockaddr *)&addr6;
-    const socklen_t addr_len = sizeof (addr6);
-    const char *address = hev_config_get_dns_address ();
+    struct sockaddr *addr;
+    socklen_t addr_len;
 
     /* read socks5 request domain addr length */
     len = hev_task_io_socket_recv (self->client_fd, &socks5_r->domain.len, 1,
@@ -429,17 +427,7 @@ socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
 
     task = hev_task_self ();
     hev_task_add_fd (task, dns_fd, POLLIN | POLLOUT);
-
-    addr6.sin6_family = AF_INET6;
-    addr6.sin6_port = htons (53);
-    if (inet_pton (AF_INET, address, &addr6.sin6_addr.s6_addr[12]) == 1) {
-        ((uint16_t *)&addr6.sin6_addr)[5] = 0xffff;
-    } else {
-        if (inet_pton (AF_INET6, address, &addr6.sin6_addr) != 1) {
-            close (dns_fd);
-            return -1;
-        }
-    }
+    addr = hev_config_get_dns_address (&addr_len);
 
     /* ipv4: type a */
     len = hev_dns_query_generate ((const char *)socks5_r->domain.addr, AF_INET,
@@ -567,8 +555,9 @@ static int
 socks5_do_dns_fwd (HevSocks5Session *self)
 {
     Socks5ReqResHeader socks5_r;
-    const char *address = hev_config_get_dns_address ();
     ssize_t len;
+    struct sockaddr *addr;
+    socklen_t addr_len;
 
     /* read socks5 request body */
     len = hev_task_io_socket_recv (self->client_fd, &socks5_r.atype, 7,
@@ -578,14 +567,8 @@ socks5_do_dns_fwd (HevSocks5Session *self)
         return STEP_CLOSE_SESSION;
 
     /* set default dns address */
-    self->addr.sin6_family = AF_INET6;
-    self->addr.sin6_port = htons (53);
-    if (inet_pton (AF_INET, address, &self->addr.sin6_addr.s6_addr[12]) == 1) {
-        ((uint16_t *)&self->addr.sin6_addr)[5] = 0xffff;
-    } else {
-        if (inet_pton (AF_INET6, address, &self->addr.sin6_addr) != 1)
-            return STEP_CLOSE_SESSION;
-    }
+    addr = hev_config_get_dns_address (&addr_len);
+    __builtin_memcpy (&self->addr, addr, addr_len);
 
     return STEP_WRITE_RESPONSE;
 }
