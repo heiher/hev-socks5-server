@@ -15,8 +15,6 @@
 #include <signal.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 
 #include "hev-socks5-server.h"
 #include "hev-socks5-worker.h"
@@ -45,10 +43,8 @@ static int
 hev_socks5_server_socket (int reuseport)
 {
     int fd, ret, reuse = 1;
-    struct sockaddr_in6 addr6 = { 0 };
-    struct sockaddr *addr = (struct sockaddr *)&addr6;
-    const socklen_t addr_len = sizeof (addr6);
-    const char *address = hev_config_get_listen_address ();
+    struct sockaddr *addr;
+    socklen_t addr_len;
 
     fd = hev_task_io_socket_socket (AF_INET6, SOCK_STREAM, 0);
     if (fd == -1) {
@@ -72,18 +68,7 @@ hev_socks5_server_socket (int reuseport)
         }
     }
 
-    addr6.sin6_family = AF_INET6;
-    addr6.sin6_port = htons (hev_config_get_port ());
-    if (inet_pton (AF_INET, address, &addr6.sin6_addr.s6_addr[12]) == 1) {
-        ((uint16_t *)&addr6.sin6_addr)[5] = 0xffff;
-    } else {
-        if (inet_pton (AF_INET6, address, &addr6.sin6_addr) != 1) {
-            fprintf (stderr, "Parse address failed!\n");
-            close (fd);
-            return -4;
-        }
-    }
-
+    addr = hev_config_get_listen_address (&addr_len);
     ret = bind (fd, addr, addr_len);
     if (ret == -1) {
         fprintf (stderr, "Bind address failed!\n");
