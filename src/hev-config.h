@@ -10,6 +10,8 @@
 #ifndef __HEV_CONFIG_H__
 #define __HEV_CONFIG_H__
 
+#include <netinet/in.h>
+
 typedef enum _HevConfigAuthMethod HevConfigAuthMethod;
 
 enum _HevConfigAuthMethod
@@ -23,9 +25,8 @@ void hev_config_fini (void);
 
 unsigned int hev_config_get_workers (void);
 
-const char *hev_config_get_listen_address (void);
-unsigned short hev_config_get_port (void);
-const char *hev_config_get_dns_address (void);
+struct sockaddr *hev_config_get_listen_address (socklen_t *addr_len);
+struct sockaddr *hev_config_get_dns_address (socklen_t *addr_len);
 
 unsigned int hev_config_get_auth_method (void);
 const char *hev_config_get_auth_username (void);

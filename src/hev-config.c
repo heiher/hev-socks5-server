@@ -8,20 +8,39 @@
  */
 
 #include <stdio.h>
+#include <arpa/inet.h>
 #include <iniparser.h>
 
 #include "hev-config.h"
 #include "hev-config-const.h"
 
-static char listen_address[64];
-static char dns_address[64];
-static unsigned short port;
+static struct sockaddr_in6 listen_address;
+static struct sockaddr_in6 dns_address;
 static unsigned int workers;
 static unsigned int auth_method;
 static char username[256];
 static char password[256];
 static char pid_file[1024];
 static int limit_nofile;
+
+static int
+address_to_sockaddr (const char *address, unsigned short port,
+                     struct sockaddr_in6 *addr)
+{
+    __builtin_bzero (addr, sizeof (*addr));
+
+    addr->sin6_family = AF_INET6;
+    addr->sin6_port = htons (port);
+    if (inet_pton (AF_INET, address, &addr->sin6_addr.s6_addr[12]) == 1) {
+        ((uint16_t *)&addr->sin6_addr)[5] = 0xffff;
+    } else {
+        if (inet_pton (AF_INET6, address, &addr->sin6_addr) != 1) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
 
 int
 hev_config_init (const char *config_path)
@@ -42,14 +61,19 @@ hev_config_init (const char *config_path)
         iniparser_freedict (ini_dict);
         return -2;
     }
-    strncpy (listen_address, address, 63);
 
     /* Main:Port */
-    port = iniparser_getint (ini_dict, "Main:Port", -1);
-    if (-1 == (int)port) {
+    int port = iniparser_getint (ini_dict, "Main:Port", -1);
+    if (-1 == port) {
         fprintf (stderr, "Get Main:Port from file %s failed!\n", config_path);
         iniparser_freedict (ini_dict);
         return -3;
+    }
+
+    if (address_to_sockaddr (address, port, &listen_address) < 0) {
+        fprintf (stderr, "Parse listen address failed!\n");
+        iniparser_freedict (ini_dict);
+        return -4;
     }
 
     /* Main:DNSAddress */
@@ -58,9 +82,14 @@ hev_config_init (const char *config_path)
         fprintf (stderr, "Get Main:DNSAddress from file %s failed!\n",
                  config_path);
         iniparser_freedict (ini_dict);
-        return -4;
+        return -5;
     }
-    strncpy (dns_address, address, 63);
+
+    if (address_to_sockaddr (address, 53, &dns_address) < 0) {
+        fprintf (stderr, "Parse dns address failed!\n");
+        iniparser_freedict (ini_dict);
+        return -6;
+    }
 
     /* Main:Workers */
     workers = iniparser_getint (ini_dict, "Main:Workers", 1);
@@ -101,22 +130,18 @@ hev_config_get_workers (void)
     return workers;
 }
 
-const char *
-hev_config_get_listen_address (void)
+struct sockaddr *
+hev_config_get_listen_address (socklen_t *addr_len)
 {
-    return listen_address;
+    *addr_len = sizeof (listen_address);
+    return (struct sockaddr *)&listen_address;
 }
 
-unsigned short
-hev_config_get_port (void)
+struct sockaddr *
+hev_config_get_dns_address (socklen_t *addr_len)
 {
-    return port;
-}
-
-const char *
-hev_config_get_dns_address (void)
-{
-    return dns_address;
+    *addr_len = sizeof (dns_address);
+    return (struct sockaddr *)&dns_address;
 }
 
 unsigned int
