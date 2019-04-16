@@ -384,7 +384,7 @@ static int
 socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
 {
     HevTask *task;
-    int dns_fd;
+    int dns_fd, i, af[2];
     uint8_t buf[2048];
     ssize_t len;
     struct sockaddr *addr;
@@ -429,68 +429,56 @@ socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
     hev_task_add_fd (task, dns_fd, POLLIN | POLLOUT);
     addr = hev_config_get_dns_address (&addr_len);
 
-    /* ipv4: type a */
-    len = hev_dns_query_generate ((const char *)socks5_r->domain.addr, AF_INET,
-                                  buf, 2048);
-    if (len <= 0) {
-        close (dns_fd);
-        return -1;
+    if (hev_config_get_ipv6_first ()) {
+        af[0] = AF_INET6;
+        af[1] = AF_INET;
+    } else {
+        af[0] = AF_INET;
+        af[1] = AF_INET6;
     }
 
-    /* send dns query message */
-    len = hev_task_io_socket_sendto (dns_fd, buf, len, 0, addr, addr_len,
-                                     socks5_session_task_io_yielder, self);
-    if (len <= 0) {
-        close (dns_fd);
-        return -1;
-    }
+    for (i = 0; i < 2; i++) {
+        void *addr_ptr;
 
-    /* recv dns response message */
-    len = hev_task_io_socket_recvfrom (dns_fd, buf, 2048, 0, NULL, NULL,
-                                       socks5_session_task_io_yielder, self);
-    if (len <= 0) {
-        close (dns_fd);
-        return -1;
-    }
+        len = hev_dns_query_generate ((const char *)socks5_r->domain.addr,
+                                      af[i], buf, 2048);
+        if (len <= 0) {
+            close (dns_fd);
+            return -1;
+        }
 
-    if (hev_dns_answer_parse (buf, len, AF_INET,
-                              &self->addr.sin6_addr.s6_addr[12]) == 0) {
-        ((uint16_t *)&self->addr.sin6_addr)[5] = 0xffff;
-        close (dns_fd);
-        return 0;
-    }
+        /* send dns query message */
+        len = hev_task_io_socket_sendto (dns_fd, buf, len, 0, addr, addr_len,
+                                         socks5_session_task_io_yielder, self);
+        if (len <= 0) {
+            close (dns_fd);
+            return -1;
+        }
 
-    /* ipv6: type aaaa */
-    len = hev_dns_query_generate ((const char *)socks5_r->domain.addr, AF_INET6,
-                                  buf, 2048);
-    if (len <= 0) {
-        close (dns_fd);
-        return -1;
-    }
+        /* recv dns response message */
+        len = hev_task_io_socket_recvfrom (dns_fd, buf, 2048, 0, NULL, NULL,
+                                           socks5_session_task_io_yielder,
+                                           self);
+        if (len <= 0) {
+            close (dns_fd);
+            return -1;
+        }
 
-    /* send dns query message */
-    len = hev_task_io_socket_sendto (dns_fd, buf, len, 0, addr, addr_len,
-                                     socks5_session_task_io_yielder, self);
-    if (len <= 0) {
-        close (dns_fd);
-        return -1;
-    }
+        if (AF_INET6 == af[i]) {
+            addr_ptr = &self->addr.sin6_addr;
+        } else {
+            addr_ptr = &self->addr.sin6_addr.s6_addr[12];
+            ((uint16_t *)&self->addr.sin6_addr)[5] = 0xffff;
+        }
 
-    /* recv dns response message */
-    len = hev_task_io_socket_recvfrom (dns_fd, buf, 2048, 0, NULL, NULL,
-                                       socks5_session_task_io_yielder, self);
-    if (len <= 0) {
-        close (dns_fd);
-        return -1;
-    }
-
-    if (hev_dns_answer_parse (buf, len, AF_INET6, &self->addr.sin6_addr) < 0) {
-        close (dns_fd);
-        return -1;
+        if (hev_dns_answer_parse (buf, len, af[i], addr_ptr) == 0) {
+            close (dns_fd);
+            return 0;
+        }
     }
 
     close (dns_fd);
-    return 0;
+    return -1;
 }
 
 static int
