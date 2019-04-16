@@ -17,6 +17,7 @@
 static struct sockaddr_in6 listen_address;
 static struct sockaddr_in6 dns_address;
 static unsigned int workers;
+static int ipv6_first;
 static unsigned int auth_method;
 static char username[256];
 static char password[256];
@@ -96,6 +97,9 @@ hev_config_init (const char *config_path)
     if (workers <= 0)
         workers = 1;
 
+    /* Main:IPv6First */
+    ipv6_first = iniparser_getboolean (ini_dict, "Main:IPv6First", 0);
+
     /* Auth:Username */
     char *user = iniparser_getstring (ini_dict, "Auth:Username", NULL);
     /* Auth:Password */
@@ -142,6 +146,12 @@ hev_config_get_dns_address (socklen_t *addr_len)
 {
     *addr_len = sizeof (dns_address);
     return (struct sockaddr *)&dns_address;
+}
+
+int
+hev_config_get_ipv6_first (void)
+{
+    return ipv6_first;
 }
 
 unsigned int

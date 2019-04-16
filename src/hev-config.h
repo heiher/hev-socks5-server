@@ -28,6 +28,8 @@ unsigned int hev_config_get_workers (void);
 struct sockaddr *hev_config_get_listen_address (socklen_t *addr_len);
 struct sockaddr *hev_config_get_dns_address (socklen_t *addr_len);
 
+int hev_config_get_ipv6_first (void);
+
 unsigned int hev_config_get_auth_method (void);
 const char *hev_config_get_auth_username (void);
 const char *hev_config_get_auth_password (void);
