@@ -49,6 +49,8 @@ ListenAddress=0.0.0.0
 ;  ipv4
 ;  ipv6
 DNSAddress=8.8.8.8
+; Resolve domain to IPv6 address first
+IPv6First=true
 
 ;[Auth]
 ;Username=
