@@ -218,7 +218,7 @@ hev_socks5_event_task_entry (void *data)
     }
 
     close (self->event_fds[0]);
-    close (self->event_fds[0]);
+    close (self->event_fds[1]);
 }
 
 static void
