@@ -375,7 +375,7 @@ socks5_parse_addr_ipv6 (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
 
     self->addr.sin6_family = AF_INET6;
     self->addr.sin6_port = socks5_r->ipv6.port;
-    __builtin_memcpy (&self->addr.sin6_addr, &socks5_r->ipv6.addr, 16);
+    __builtin_memcpy (&self->addr.sin6_addr, socks5_r->ipv6.addr, 16);
 
     return 0;
 }
@@ -671,7 +671,7 @@ socks5_write_response (HevSocks5Session *self, int step)
         len = 22;
         socks5_r.atype = 0x04;
         socks5_r.ipv6.port = self->addr.sin6_port;
-        __builtin_memcpy (&socks5_r.ipv6.addr, &self->addr.sin6_addr, 16);
+        __builtin_memcpy (socks5_r.ipv6.addr, &self->addr.sin6_addr, 16);
     }
     hev_task_io_socket_send (self->client_fd, &socks5_r, len, MSG_WAITALL,
                              socks5_session_task_io_yielder, self);
