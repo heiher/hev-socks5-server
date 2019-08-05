@@ -548,9 +548,27 @@ socks5_do_dns_fwd (HevSocks5Session *self)
     socklen_t addr_len;
 
     /* read socks5 request body */
-    len = hev_task_io_socket_recv (self->client_fd, &socks5_r.atype, 7,
+    len = hev_task_io_socket_recv (self->client_fd, &socks5_r.atype, 1,
                                    MSG_WAITALL, socks5_session_task_io_yielder,
                                    self);
+    if (len <= 0)
+        return STEP_CLOSE_SESSION;
+
+    switch (socks5_r.atype) {
+    case 0x01: /* ipv4 */
+        len = hev_task_io_socket_recv (self->client_fd, &socks5_r.ipv4, 6,
+                                       MSG_WAITALL,
+                                       socks5_session_task_io_yielder, self);
+        break;
+    case 0x04: /* ipv6 */
+        len = hev_task_io_socket_recv (self->client_fd, &socks5_r.ipv6, 18,
+                                       MSG_WAITALL,
+                                       socks5_session_task_io_yielder, self);
+        break;
+    default:
+        len = -1;
+    }
+
     if (len <= 0)
         return STEP_CLOSE_SESSION;
 
