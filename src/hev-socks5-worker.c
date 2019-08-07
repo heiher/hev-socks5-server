@@ -156,7 +156,8 @@ hev_socks5_worker_task_entry (void *data)
 
 #ifdef _DEBUG
         {
-            char buf[64], *sa = NULL;
+            char buf[64];
+            const char *sa = NULL;
             uint16_t port = 0;
             if (sizeof (addr6) == addr_len) {
                 sa = inet_ntop (AF_INET6, &addr6.sin6_addr, buf, sizeof (buf));
