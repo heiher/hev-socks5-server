@@ -13,7 +13,7 @@ PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)/$(PKG_NAME)-$(PKG_VERSION)
 
 #PKG_LICENSE:=GPLv3
 #PKG_LICENSE_FILES:=LICENSE
-PKG_MAINTAINER:=pexcn <i@pexcn.me>
+PKG_MAINTAINER:=heiher <r@hev.cc>
 
 include $(INCLUDE_DIR)/package.mk
 
