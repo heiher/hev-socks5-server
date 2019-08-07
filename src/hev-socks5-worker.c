@@ -56,7 +56,7 @@ hev_socks5_worker_new (int fd)
     self = hev_malloc0 (sizeof (HevSocks5Worker));
     if (!self) {
         fprintf (stderr, "Allocate worker failed!\n");
-        return NULL;
+        goto exit;
     }
 
     self->fd = fd;
@@ -66,28 +66,31 @@ hev_socks5_worker_new (int fd)
     self->task_worker = hev_task_new (8192);
     if (!self->task_worker) {
         fprintf (stderr, "Create worker's task failed!\n");
-        hev_free (self);
-        return NULL;
+        goto exit_free;
     }
 
     self->task_event = hev_task_new (8192);
     if (!self->task_event) {
         fprintf (stderr, "Create event's task failed!\n");
-        hev_task_unref (self->task_worker);
-        hev_free (self);
-        return NULL;
+        goto exit_free_task_worker;
     }
 
     self->task_session_manager = hev_task_new (8192);
     if (!self->task_session_manager) {
         fprintf (stderr, "Create session manager's task failed!\n");
-        hev_task_unref (self->task_event);
-        hev_task_unref (self->task_worker);
-        hev_free (self);
-        return NULL;
+        goto exit_free_task_event;
     }
 
     return self;
+
+exit_free_task_event:
+    hev_task_unref (self->task_event);
+exit_free_task_worker:
+    hev_task_unref (self->task_worker);
+exit_free:
+    hev_free (self);
+exit:
+    return NULL;
 }
 
 void
