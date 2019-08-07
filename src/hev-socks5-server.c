@@ -40,7 +40,7 @@ static void sigint_handler (int signum);
 static void *work_thread_handler (void *data);
 
 static int
-hev_socks5_server_socket (int reuseport)
+hev_socks5_server_socket (int *reuseport)
 {
     int fd, ret, reuse = 1;
     struct sockaddr *addr;
@@ -49,22 +49,20 @@ hev_socks5_server_socket (int reuseport)
     fd = hev_task_io_socket_socket (AF_INET6, SOCK_STREAM, 0);
     if (fd == -1) {
         fprintf (stderr, "Create socket failed!\n");
-        return -1;
+        goto exit;
     }
 
     ret = setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof (reuse));
     if (ret == -1) {
         fprintf (stderr, "Set reuse address failed!\n");
-        close (fd);
-        return -2;
+        goto exit_close;
     }
 
-    if (reuseport) {
+    if (*reuseport) {
         ret = setsockopt (fd, SOL_SOCKET, SO_REUSEPORT, &reuse, sizeof (reuse));
         if (ret == -1) {
-            fprintf (stderr, "Set reuse port failed!\n");
-            close (fd);
-            return -3;
+            *reuseport = 0;
+            goto exit_close;
         }
     }
 
@@ -72,66 +70,87 @@ hev_socks5_server_socket (int reuseport)
     ret = bind (fd, addr, addr_len);
     if (ret == -1) {
         fprintf (stderr, "Bind address failed!\n");
-        close (fd);
-        return -5;
+        goto exit_close;
     }
 
     ret = listen (fd, 100);
     if (ret == -1) {
         fprintf (stderr, "Listen failed!\n");
-        close (fd);
-        return -6;
+        goto exit_close;
     }
 
     return fd;
+
+exit_close:
+    close (fd);
+exit:
+    return -1;
 }
 
 int
 hev_socks5_server_init (void)
 {
     int i, reuseport = 1;
+    HevSocks5WorkerData *wl;
 
     if (hev_task_system_init () < 0) {
         fprintf (stderr, "Init task system failed!\n");
-        return -1;
+        goto exit;
     }
 
     workers = hev_config_get_workers ();
-    worker_list = hev_malloc0 (sizeof (HevSocks5WorkerData) * workers);
-    if (!worker_list) {
+    wl = hev_malloc0 (sizeof (HevSocks5WorkerData) * workers);
+    if (!wl) {
         fprintf (stderr, "Allocate worker list failed!\n");
-        return -2;
+        goto exit_free_sys;
     }
 
-    worker_list[0].fd = hev_socks5_server_socket (1);
-    if (worker_list[0].fd == -3) {
-        reuseport = 0;
-        worker_list[0].fd = hev_socks5_server_socket (0);
-    }
-    if (worker_list[0].fd < 0)
-        return -3;
+    wl[0].fd = hev_socks5_server_socket (&reuseport);
+    if ((wl[0].fd < 0) && (!reuseport))
+        wl[0].fd = hev_socks5_server_socket (&reuseport);
+    if (wl[0].fd < 0)
+        goto exit_free_wl;
 
     for (i = 1; i < workers; i++) {
         if (reuseport) {
-            worker_list[i].fd = hev_socks5_server_socket (1);
-            if (worker_list[i].fd < 0)
-                return -4;
+            wl[i].fd = hev_socks5_server_socket (&reuseport);
+            if (wl[i].fd < 0)
+                goto exit_close_fds;
         } else {
-            worker_list[i].fd = worker_list[0].fd;
+            wl[i].fd = wl[0].fd;
         }
     }
 
     if (signal (SIGPIPE, SIG_IGN) == SIG_ERR) {
         fprintf (stderr, "Set signal pipe's handler failed!\n");
-        return -5;
+        goto exit_close_fds;
     }
 
     if (signal (SIGINT, sigint_handler) == SIG_ERR) {
         fprintf (stderr, "Set signal int's handler failed!\n");
-        return -6;
+        goto exit_close_fds;
     }
 
+    worker_list = wl;
+
     return 0;
+
+exit_close_fds:
+    if (reuseport) {
+        for (i = 0; i < workers; i++) {
+            if (wl[i].fd < 0)
+                break;
+            close (wl[i].fd);
+        }
+    } else {
+        close (wl[0].fd);
+    }
+exit_free_wl:
+    hev_free (wl);
+exit_free_sys:
+    hev_task_system_fini ();
+exit:
+    return -1;
 }
 
 void
@@ -146,14 +165,15 @@ hev_socks5_server_run (void)
 {
     int i;
     pthread_t work_threads[workers];
+    HevSocks5WorkerData *w0 = &worker_list[0];
 
-    worker_list[0].worker = hev_socks5_worker_new (worker_list[0].fd);
-    if (!worker_list[0].worker) {
+    w0->worker = hev_socks5_worker_new (w0->fd);
+    if (!w0->worker) {
         fprintf (stderr, "Create socks5 worker 0 failed!\n");
         return -1;
     }
 
-    hev_socks5_worker_start (worker_list[0].worker);
+    hev_socks5_worker_start (w0->worker);
 
     for (i = 1; i < workers; i++) {
         pthread_create (&work_threads[i], NULL, work_thread_handler,
@@ -166,8 +186,8 @@ hev_socks5_server_run (void)
         pthread_join (work_threads[i], NULL);
     }
 
-    hev_socks5_worker_destroy (worker_list[0].worker);
-    close (worker_list[0].fd);
+    hev_socks5_worker_destroy (w0->worker);
+    close (w0->fd);
 
     return 0;
 }
@@ -178,10 +198,12 @@ sigint_handler (int signum)
     int i;
 
     for (i = 0; i < workers; i++) {
-        if (!worker_list[i].worker)
+        HevSocks5WorkerData *wi = &worker_list[i];
+
+        if (!wi->worker)
             continue;
 
-        hev_socks5_worker_stop (worker_list[i].worker);
+        hev_socks5_worker_stop (wi->worker);
     }
 }
 
@@ -189,27 +211,28 @@ static void *
 work_thread_handler (void *data)
 {
     int i = (intptr_t)data;
+    HevSocks5WorkerData *wi = &worker_list[i];
 
     if (hev_task_system_init () < 0) {
         fprintf (stderr, "Init task system failed!\n");
-        return NULL;
+        goto exit;
     }
 
-    worker_list[i].worker = hev_socks5_worker_new (worker_list[i].fd);
-    if (!worker_list[i].worker) {
+    wi->worker = hev_socks5_worker_new (wi->fd);
+    if (!wi->worker) {
         fprintf (stderr, "Create socks5 worker %d failed!\n", i);
-        hev_task_system_fini ();
-        return NULL;
+        goto exit_free_sys;
     }
 
-    hev_socks5_worker_start (worker_list[i].worker);
+    hev_socks5_worker_start (wi->worker);
 
     hev_task_system_run ();
 
-    hev_socks5_worker_destroy (worker_list[i].worker);
-    close (worker_list[i].fd);
+    hev_socks5_worker_destroy (wi->worker);
+    close (wi->fd);
 
+exit_free_sys:
     hev_task_system_fini ();
-
+exit:
     return NULL;
 }
