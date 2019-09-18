@@ -22,6 +22,7 @@ static unsigned int auth_method;
 static char username[256];
 static char password[256];
 static char log_file[1024];
+static char log_level[16];
 static char pid_file[1024];
 static int limit_nofile = -2;
 
@@ -189,6 +190,8 @@ hev_config_parse_misc (yaml_document_t *doc, yaml_node_t *base)
             strncpy (pid_file, value, 1024 - 1);
         else if (0 == strcmp (key, "log-file"))
             strncpy (log_file, value, 1024 - 1);
+        else if (0 == strcmp (key, "log-level"))
+            strncpy (log_level, value, 16 - 1);
         else if (0 == strcmp (key, "limit-nofile"))
             limit_nofile = strtol (value, NULL, 10);
     }
@@ -343,4 +346,13 @@ hev_config_get_misc_log_file (void)
         return NULL;
 
     return log_file;
+}
+
+const char *
+hev_config_get_misc_log_level (void)
+{
+    if ('\0' == log_level[0])
+        return "warn";
+
+    return log_level;
 }

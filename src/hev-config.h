@@ -39,5 +39,6 @@ const char *hev_config_get_misc_pid_file (void);
 int hev_config_get_misc_limit_nofile (void);
 
 const char *hev_config_get_misc_log_file (void);
+const char *hev_config_get_misc_log_level (void);
 
 #endif /* __HEV_CONFIG_H__ */
