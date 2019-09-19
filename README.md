@@ -35,33 +35,22 @@ ndk-build
 
 ### Config
 
-```ini
-[Main]
-; Worker threads
-Workers=4
-; Listen port
-Port=1080
-; Listen address
-;  ipv4
-;  ipv6
-ListenAddress=0.0.0.0
-; DNS server address
-;  ipv4
-;  ipv6
-DNSAddress=8.8.8.8
-; Resolve domain to IPv6 address first
-IPv6First=true
+```yaml
+main:
+  # Worker threads
+  workers: 4
+  port: 1080 # Listen port
+  listen-address: 0.0.0.0 # Listen address (ipv4|ipv6)
+  dns-address: 8.8.8.8 # DNS server address (ipv4|ipv6)
+  ipv6-first: false # Resolve domain to IPv6 address first
 
-;[Auth]
-;Username=
-;Password=
+#auth:
+#  username:
+#  password:
 
-;[Misc]
-; If present, run as a daemon with this pid file
-;PidFile=/run/hev-socks5-server.pid
-; If present, set rlimit nofile; else use default value of environment
-; -1: unlimit
-;LimitNOFile=-1
+#misc:
+#  pid-file: /run/hev-socks5-server.pid # If present, run as a daemon
+#  limit-nofile: -1 # If present, set rlimit nofile; else use default value
 ```
 
 ### Run
