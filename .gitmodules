@@ -1,6 +1,3 @@
-[submodule "third-part/ini-parser"]
-	path = third-part/ini-parser
-	url = git://github.com/heiher/ini-parser
 [submodule "third-part/hev-task-system"]
 	path = third-part/hev-task-system
 	url = git://github.com/heiher/hev-task-system
