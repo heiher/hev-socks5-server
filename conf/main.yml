@@ -1,0 +1,17 @@
+# Main configuration for hev-socks5-server
+
+main:
+  # Worker threads
+  workers: 4
+  port: 1080 # Listen port
+  listen-address: 0.0.0.0 # Listen address (ipv4|ipv6)
+  dns-address: 8.8.8.8 # DNS server address (ipv4|ipv6)
+  ipv6-first: false # Resolve domain to IPv6 address first
+
+#auth:
+#  username:
+#  password:
+
+#misc:
+#  pid-file: /run/hev-socks5-server.pid # If present, run as a daemon
+#  limit-nofile: -1 # If present, set rlimit nofile; else use default value

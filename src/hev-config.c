@@ -9,7 +9,7 @@
 
 #include <stdio.h>
 #include <arpa/inet.h>
-#include <iniparser.h>
+#include <yaml.h>
 
 #include "hev-config.h"
 #include "hev-config-const.h"
@@ -22,7 +22,7 @@ static unsigned int auth_method;
 static char username[256];
 static char password[256];
 static char pid_file[1024];
-static int limit_nofile;
+static int limit_nofile = -2;
 
 static int
 address_to_sockaddr (const char *address, unsigned short port,
@@ -43,84 +43,228 @@ address_to_sockaddr (const char *address, unsigned short port,
     return 0;
 }
 
-int
-hev_config_init (const char *config_path)
+static int
+hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
 {
-    dictionary *ini_dict;
+    yaml_node_pair_t *pair;
+    int port = 0;
+    const char *listen_addr = NULL, *dns_addr = NULL;
 
-    ini_dict = iniparser_load (config_path);
-    if (!ini_dict) {
-        fprintf (stderr, "Load config from file %s failed!\n", config_path);
+    if (!base || YAML_MAPPING_NODE != base->type)
+        return -1;
+
+    for (pair = base->data.mapping.pairs.start;
+         pair <= base->data.mapping.pairs.top; pair++) {
+        yaml_node_t *node;
+        const char *key, *value;
+
+        if (!pair->key || !pair->value)
+            break;
+
+        node = yaml_document_get_node (doc, pair->key);
+        if (!node || YAML_SCALAR_NODE != node->type)
+            break;
+        key = (const char *)node->data.scalar.value;
+
+        node = yaml_document_get_node (doc, pair->value);
+        if (!node || YAML_SCALAR_NODE != node->type)
+            break;
+        value = (const char *)node->data.scalar.value;
+
+        if (0 == strcmp (key, "workers"))
+            workers = strtoul (value, NULL, 10);
+        else if (0 == strcmp (key, "port"))
+            port = strtoul (value, NULL, 10);
+        else if (0 == strcmp (key, "listen-address"))
+            listen_addr = value;
+        else if (0 == strcmp (key, "dns-address"))
+            dns_addr = value;
+        else if (0 == strcmp (key, "ipv6-first"))
+            ipv6_first = (0 == strcasecmp (value, "true")) ? 1 : 0;
+    }
+
+    if (!workers) {
+        fprintf (stderr, "Can't found main.workers!\n");
         return -1;
     }
 
-    /* Main:ListenAddress */
-    char *address = iniparser_getstring (ini_dict, "Main:ListenAddress", NULL);
-    if (!address) {
-        fprintf (stderr, "Get Main:ListenAddress from file %s failed!\n",
-                 config_path);
-        iniparser_freedict (ini_dict);
-        return -2;
+    if (!port) {
+        fprintf (stderr, "Can't found main.port!\n");
+        return -1;
     }
 
-    /* Main:Port */
-    int port = iniparser_getint (ini_dict, "Main:Port", -1);
-    if (-1 == port) {
-        fprintf (stderr, "Get Main:Port from file %s failed!\n", config_path);
-        iniparser_freedict (ini_dict);
-        return -3;
+    if (!listen_addr) {
+        fprintf (stderr, "Can't found main.listen-address!\n");
+        return -1;
     }
 
-    if (address_to_sockaddr (address, port, &listen_address) < 0) {
-        fprintf (stderr, "Parse listen address failed!\n");
-        iniparser_freedict (ini_dict);
-        return -4;
+    if (address_to_sockaddr (listen_addr, port, &listen_address) < 0) {
+        fprintf (stderr, "Parse main.listen-address!\n");
+        return -1;
     }
 
-    /* Main:DNSAddress */
-    address = iniparser_getstring (ini_dict, "Main:DNSAddress", NULL);
-    if (!address) {
-        fprintf (stderr, "Get Main:DNSAddress from file %s failed!\n",
-                 config_path);
-        iniparser_freedict (ini_dict);
-        return -5;
+    if (!dns_addr) {
+        fprintf (stderr, "Can't found main.dns-address!\n");
+        return -1;
     }
 
-    if (address_to_sockaddr (address, 53, &dns_address) < 0) {
-        fprintf (stderr, "Parse dns address failed!\n");
-        iniparser_freedict (ini_dict);
-        return -6;
+    if (address_to_sockaddr (dns_addr, 53, &dns_address) < 0) {
+        fprintf (stderr, "Parse main.dns-address!\n");
+        return -1;
     }
 
-    /* Main:Workers */
-    workers = iniparser_getint (ini_dict, "Main:Workers", 1);
-    if (workers <= 0)
-        workers = 1;
+    return 0;
+}
 
-    /* Main:IPv6First */
-    ipv6_first = iniparser_getboolean (ini_dict, "Main:IPv6First", 0);
+static int
+hev_config_parse_auth (yaml_document_t *doc, yaml_node_t *base)
+{
+    yaml_node_pair_t *pair;
+    const char *user = NULL, *pass = NULL;
 
-    /* Auth:Username */
-    char *user = iniparser_getstring (ini_dict, "Auth:Username", NULL);
-    /* Auth:Password */
-    char *pass = iniparser_getstring (ini_dict, "Auth:Password", NULL);
+    if (!base || YAML_MAPPING_NODE != base->type)
+        return -1;
+
+    for (pair = base->data.mapping.pairs.start;
+         pair <= base->data.mapping.pairs.top; pair++) {
+        yaml_node_t *node;
+        const char *key, *value;
+
+        if (!pair->key || !pair->value)
+            break;
+
+        node = yaml_document_get_node (doc, pair->key);
+        if (!node || YAML_SCALAR_NODE != node->type)
+            break;
+        key = (const char *)node->data.scalar.value;
+
+        node = yaml_document_get_node (doc, pair->value);
+        if (!node || YAML_SCALAR_NODE != node->type)
+            break;
+        value = (const char *)node->data.scalar.value;
+
+        if (0 == strcmp (key, "username"))
+            user = value;
+        else if (0 == strcmp (key, "password"))
+            pass = value;
+    }
+
     if (user && pass) {
         strncpy (username, user, 255);
-        strncpy (password, pass, 255);
+        strncpy (username, pass, 255);
         auth_method = HEV_CONFIG_AUTH_METHOD_USERPASS;
     }
 
-    /* Misc:PidFile */
-    char *path = iniparser_getstring (ini_dict, "Misc:PidFile", NULL);
-    if (path)
-        strncpy (pid_file, path, 1023);
+    return 0;
+}
 
-    /* Misc:LimitNOFile */
-    limit_nofile = iniparser_getint (ini_dict, "Misc:LimitNOFile", -2);
+static int
+hev_config_parse_misc (yaml_document_t *doc, yaml_node_t *base)
+{
+    yaml_node_pair_t *pair;
 
-    iniparser_freedict (ini_dict);
+    if (!base || YAML_MAPPING_NODE != base->type)
+        return -1;
+
+    for (pair = base->data.mapping.pairs.start;
+         pair <= base->data.mapping.pairs.top; pair++) {
+        yaml_node_t *node;
+        const char *key, *value;
+
+        if (!pair->key || !pair->value)
+            break;
+
+        node = yaml_document_get_node (doc, pair->key);
+        if (!node || YAML_SCALAR_NODE != node->type)
+            break;
+        key = (const char *)node->data.scalar.value;
+
+        node = yaml_document_get_node (doc, pair->value);
+        if (!node || YAML_SCALAR_NODE != node->type)
+            break;
+        value = (const char *)node->data.scalar.value;
+
+        if (0 == strcmp (key, "pid-file"))
+            strncpy (pid_file, value, 1024 - 1);
+        else if (0 == strcmp (key, "limit-nofile"))
+            limit_nofile = strtol (value, NULL, 10);
+    }
 
     return 0;
+}
+
+static int
+hev_config_parse_doc (yaml_document_t *doc)
+{
+    yaml_node_t *root;
+    yaml_node_pair_t *pair;
+
+    root = yaml_document_get_root_node (doc);
+    if (!root || YAML_MAPPING_NODE != root->type)
+        return -1;
+
+    for (pair = root->data.mapping.pairs.start;
+         pair <= root->data.mapping.pairs.top; pair++) {
+        yaml_node_t *node;
+        const char *key;
+        int res = 0;
+
+        if (!pair->key || !pair->value)
+            break;
+
+        node = yaml_document_get_node (doc, pair->key);
+        if (!node || YAML_SCALAR_NODE != node->type)
+            break;
+
+        key = (const char *)node->data.scalar.value;
+        node = yaml_document_get_node (doc, pair->value);
+
+        if (0 == strcmp (key, "main"))
+            res = hev_config_parse_main (doc, node);
+        else if (0 == strcmp (key, "auth"))
+            res = hev_config_parse_auth (doc, node);
+        else if (0 == strcmp (key, "misc"))
+            res = hev_config_parse_misc (doc, node);
+
+        if (res < 0)
+            return -1;
+    }
+
+    return 0;
+}
+
+int
+hev_config_init (const char *config_path)
+{
+    yaml_parser_t parser;
+    yaml_document_t doc;
+    FILE *fp;
+    int res = -1;
+
+    if (!yaml_parser_initialize (&parser))
+        goto exit;
+
+    fp = fopen (config_path, "r");
+    if (!fp) {
+        fprintf (stderr, "Open %s failed!\n", config_path);
+        goto exit_free_parser;
+    }
+
+    yaml_parser_set_input_file (&parser, fp);
+    if (!yaml_parser_load (&parser, &doc)) {
+        fprintf (stderr, "Parse %s failed!\n", config_path);
+        goto exit_close_fp;
+    }
+
+    res = hev_config_parse_doc (&doc);
+    yaml_document_delete (&doc);
+
+exit_close_fp:
+    fclose (fp);
+exit_free_parser:
+    yaml_parser_delete (&parser);
+exit:
+    return res;
 }
 
 void
