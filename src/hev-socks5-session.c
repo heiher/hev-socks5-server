@@ -21,6 +21,7 @@
 #include "hev-task-io.h"
 #include "hev-task-io-socket.h"
 #include "hev-config.h"
+#include "hev-logger.h"
 #include "hev-dns-query.h"
 
 #define SESSION_HP (10)
@@ -341,6 +342,27 @@ socks5_read_request (HevSocks5Session *self)
     return STEP_WRITE_RESPONSE_ERROR_CMD;
 }
 
+static void
+socks5_session_log (HevSocks5Session *self, const char *daddr, int dport)
+{
+    struct sockaddr_in6 addr;
+    socklen_t len = sizeof (addr);
+    char buf[64];
+    const char *sa = NULL;
+    uint16_t port = 0;
+
+    if (getpeername (self->client_fd, (struct sockaddr *)&addr, &len) < 0)
+        return;
+
+    if (sizeof (addr) == len) {
+        sa = inet_ntop (AF_INET6, &addr.sin6_addr, buf, sizeof (buf));
+        port = ntohs (addr.sin6_port);
+    }
+
+    LOG_I ("Session %d created TCP [%s]:%u -> [%s]:%u", self->client_fd, sa,
+           port, daddr, dport);
+}
+
 static int
 socks5_parse_addr_ipv4 (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
 {
@@ -357,6 +379,14 @@ socks5_parse_addr_ipv4 (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
     self->addr.sin6_port = socks5_r->ipv4.port;
     ((uint16_t *)&self->addr.sin6_addr)[5] = 0xffff;
     ((uint32_t *)&self->addr.sin6_addr)[3] = socks5_r->ipv4.addr;
+
+    if (hev_logger_enabled ()) {
+        char buf[64];
+        const char *sa = NULL;
+
+        sa = inet_ntop (AF_INET6, &self->addr.sin6_addr, buf, sizeof (buf));
+        socks5_session_log (self, sa, ntohs (self->addr.sin6_port));
+    }
 
     return 0;
 }
@@ -376,6 +406,14 @@ socks5_parse_addr_ipv6 (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
     self->addr.sin6_family = AF_INET6;
     self->addr.sin6_port = socks5_r->ipv6.port;
     __builtin_memcpy (&self->addr.sin6_addr, socks5_r->ipv6.addr, 16);
+
+    if (hev_logger_enabled ()) {
+        char buf[64];
+        const char *sa = NULL;
+
+        sa = inet_ntop (AF_INET6, &self->addr.sin6_addr, buf, sizeof (buf));
+        socks5_session_log (self, sa, ntohs (self->addr.sin6_port));
+    }
 
     return 0;
 }
@@ -409,8 +447,13 @@ socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
     __builtin_memcpy (&self->addr.sin6_port,
                       socks5_r->domain.addr + socks5_r->domain.len, 2);
 
-    /* check is ipv4 or ipv6 addr string */
     socks5_r->domain.addr[socks5_r->domain.len] = '\0';
+    if (hev_logger_enabled ()) {
+        socks5_session_log (self, (const char *)socks5_r->domain.addr,
+                            ntohs (self->addr.sin6_port));
+    }
+
+    /* check is ipv4 or ipv6 addr string */
     if (inet_pton (AF_INET, (const char *)socks5_r->domain.addr,
                    &self->addr.sin6_addr.s6_addr[12]) == 1) {
         ((uint16_t *)&self->addr.sin6_addr)[5] = 0xffff;
@@ -592,6 +635,8 @@ socks5_do_fwd_dns (HevSocks5Session *self)
     struct sockaddr *addr = (struct sockaddr *)&self->addr;
     const socklen_t addr_len = sizeof (self->addr);
 
+    LOG_I ("Session %d created DNS", self->client_fd);
+
     dns_fd = hev_task_io_socket_socket (AF_INET6, SOCK_DGRAM, 0);
     if (dns_fd == -1)
         return STEP_CLOSE_SESSION;
@@ -706,6 +751,8 @@ socks5_close_session (HevSocks5Session *self)
 
     self->notify (self, self->notify_data);
     hev_socks5_session_unref (self);
+
+    LOG_I ("Session %d closed", self->client_fd);
 
     return STEP_NULL;
 }
