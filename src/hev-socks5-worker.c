@@ -144,7 +144,7 @@ hev_socks5_worker_task_entry (void *data)
         struct sockaddr_in6 addr6;
         struct sockaddr *addr = (struct sockaddr *)&addr6;
         socklen_t addr_len = sizeof (addr6);
-        HevSocks5Session *session;
+        HevSocks5Session *s;
 
         client_fd = hev_task_io_socket_accept (self->fd, addr, &addr_len,
                                                worker_task_io_yielder, self);
@@ -155,15 +155,14 @@ hev_socks5_worker_task_entry (void *data)
             break;
         }
 
-        session =
-            hev_socks5_session_new (client_fd, session_close_handler, self);
-        if (!session) {
+        s = hev_socks5_session_new (client_fd, session_close_handler, self);
+        if (!s) {
             close (client_fd);
             continue;
         }
 
-        session_manager_insert_session (self, session);
-        hev_socks5_session_run (session);
+        session_manager_insert_session (self, s);
+        hev_socks5_session_run (s);
     }
 }
 
@@ -172,7 +171,7 @@ hev_socks5_event_task_entry (void *data)
 {
     HevSocks5Worker *self = data;
     HevTask *task = hev_task_self ();
-    HevSocks5SessionBase *session;
+    HevSocks5SessionBase *s;
     int val;
 
     if (-1 == hev_task_io_pipe_pipe (self->event_fds)) {
@@ -191,11 +190,11 @@ hev_socks5_event_task_entry (void *data)
     hev_task_wakeup (self->task_session_manager);
 
     /* wakeup sessions's task */
-    for (session = self->session_list; session; session = session->next) {
-        session->hp = 0;
+    for (s = self->session_list; s; s = s->next) {
+        s->hp = 0;
 
-        /* wakeup session's task to do destroy */
-        hev_task_wakeup (session->task);
+        /* wakeup s's task to do destroy */
+        hev_task_wakeup (s->task);
     }
 
     close (self->event_fds[0]);
@@ -208,28 +207,27 @@ hev_socks5_session_manager_task_entry (void *data)
     HevSocks5Worker *self = data;
 
     for (;;) {
-        HevSocks5SessionBase *session;
+        HevSocks5SessionBase *s;
 
         hev_task_sleep (TIMEOUT);
         if (self->quit)
             break;
 
-        for (session = self->session_list; session; session = session->next) {
-            session->hp--;
-            if (session->hp > 0)
+        for (s = self->session_list; s; s = s->next) {
+            s->hp--;
+            if (s->hp > 0)
                 continue;
 
-            /* wakeup session's task to do destroy */
-            hev_task_wakeup (session->task);
+            /* wakeup s's task to do destroy */
+            hev_task_wakeup (s->task);
         }
     }
 }
 
 static void
-session_manager_insert_session (HevSocks5Worker *self,
-                                HevSocks5Session *session)
+session_manager_insert_session (HevSocks5Worker *self, HevSocks5Session *s)
 {
-    HevSocks5SessionBase *session_base = (HevSocks5SessionBase *)session;
+    HevSocks5SessionBase *session_base = (HevSocks5SessionBase *)s;
 
     /* insert session to session_list */
     session_base->prev = NULL;
@@ -240,10 +238,9 @@ session_manager_insert_session (HevSocks5Worker *self,
 }
 
 static void
-session_manager_remove_session (HevSocks5Worker *self,
-                                HevSocks5Session *session)
+session_manager_remove_session (HevSocks5Worker *self, HevSocks5Session *s)
 {
-    HevSocks5SessionBase *session_base = (HevSocks5SessionBase *)session;
+    HevSocks5SessionBase *session_base = (HevSocks5SessionBase *)s;
 
     /* remove session from session_list */
     if (session_base->prev) {
@@ -257,9 +254,9 @@ session_manager_remove_session (HevSocks5Worker *self,
 }
 
 static void
-session_close_handler (HevSocks5Session *session, void *data)
+session_close_handler (HevSocks5Session *s, void *data)
 {
     HevSocks5Worker *self = data;
 
-    session_manager_remove_session (self, session);
+    session_manager_remove_session (self, s);
 }
