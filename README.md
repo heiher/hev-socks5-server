@@ -49,6 +49,8 @@ main:
 #  password:
 
 #misc:
+#  log-file: null # stdout, stderr or file-path
+#  log-level: warn # debug, info or error
 #  pid-file: /run/hev-socks5-server.pid # If present, run as a daemon
 #  limit-nofile: -1 # If present, set rlimit nofile; else use default value
 ```
