@@ -15,8 +15,8 @@
 
 TOP_PATH := $(call my-dir)
 
-ifeq ($(filter $(modules-get-list),ini-parser),)
-    include $(TOP_PATH)/third-part/ini-parser/Android.mk
+ifeq ($(filter $(modules-get-list),yaml),)
+    include $(TOP_PATH)/third-part/yaml/Android.mk
 endif
 ifeq ($(filter $(modules-get-list),hev-task-system),)
     include $(TOP_PATH)/third-part/hev-task-system/Android.mk
@@ -30,10 +30,10 @@ include $(LOCAL_PATH)/build.mk
 LOCAL_MODULE    := hev-socks5-server
 LOCAL_SRC_FILES := $(patsubst $(SRCDIR)/%,src/%,$(SRCFILES))
 LOCAL_C_INCLUDES := \
-	$(LOCAL_PATH)/third-part/ini-parser/src \
+	$(LOCAL_PATH)/third-part/yaml/src \
 	$(LOCAL_PATH)/third-part/hev-task-system/include
 ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
 LOCAL_CFLAGS += -mfpu=neon
 endif
-LOCAL_STATIC_LIBRARIES := ini-parser hev-task-system
+LOCAL_STATIC_LIBRARIES := yaml hev-task-system
 include $(BUILD_SHARED_LIBRARY)

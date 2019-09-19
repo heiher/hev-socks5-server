@@ -7,9 +7,9 @@ PP=$(CROSS_PREFIX)cpp
 CC=$(CROSS_PREFIX)gcc
 STRIP=$(CROSS_PREFIX)strip
 CCFLAGS=-O3 -pipe -Wall -Werror $(CFLAGS) \
-		-I$(THIRDPARTDIR)/ini-parser/src \
+		-I$(THIRDPARTDIR)/yaml/src \
 		-I$(THIRDPARTDIR)/hev-task-system/include
-LDFLAGS=-L$(THIRDPARTDIR)/ini-parser/bin -lini-parser \
+LDFLAGS=-L$(THIRDPARTDIR)/yaml/bin -lyaml \
 		-L$(THIRDPARTDIR)/hev-task-system/bin -lhev-task-system \
 		-lpthread
 
@@ -22,8 +22,7 @@ THIRDPARTDIR=third-part
 
 CONFIG=$(CONFDIR)/main.ini
 TARGET=$(BINDIR)/hev-socks5-server
-THIRDPARTS=$(THIRDPARTDIR)/ini-parser \
-	   $(THIRDPARTDIR)/hev-task-system
+THIRDPARTS=$(THIRDPARTDIR)/yaml $(THIRDPARTDIR)/hev-task-system
 
 -include build.mk
 CCSRCS=$(filter %.c,$(SRCFILES))
