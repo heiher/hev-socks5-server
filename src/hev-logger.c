@@ -66,9 +66,9 @@ hev_logger_fini (void)
 }
 
 int
-hev_logger_enabled (void)
+hev_logger_enabled (HevLoggerLevel level)
 {
-    if (fd >= 0)
+    if (fd >= 0 || level >= req_level)
         return 1;
 
     return 0;
@@ -107,6 +107,9 @@ hev_logger_log (HevLoggerLevel level, const char *fmt, ...)
         break;
     case HEV_LOGGER_ERROR:
         iov[1].iov_base = "[E] ";
+        break;
+    case HEV_LOGGER_UNSET:
+        iov[1].iov_base = "[?] ";
         break;
     }
     iov[1].iov_len = 4;
