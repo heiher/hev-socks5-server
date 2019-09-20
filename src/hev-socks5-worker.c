@@ -141,12 +141,12 @@ hev_socks5_worker_task_entry (void *data)
 
     for (;;) {
         int client_fd;
-        struct sockaddr_in6 addr6;
-        struct sockaddr *addr = (struct sockaddr *)&addr6;
-        socklen_t addr_len = sizeof (addr6);
+        struct sockaddr_in6 addr;
+        socklen_t len = sizeof (addr);
         HevSocks5Session *s;
 
-        client_fd = hev_task_io_socket_accept (self->fd, addr, &addr_len,
+        client_fd = hev_task_io_socket_accept (self->fd,
+                                               (struct sockaddr *)&addr, &len,
                                                worker_task_io_yielder, self);
         if (-1 == client_fd) {
             LOG_E ("Accept failed!");
@@ -155,7 +155,8 @@ hev_socks5_worker_task_entry (void *data)
             break;
         }
 
-        s = hev_socks5_session_new (client_fd, session_close_handler, self);
+        s = hev_socks5_session_new (client_fd, &addr, session_close_handler,
+                                    self);
         if (!s) {
             close (client_fd);
             continue;
