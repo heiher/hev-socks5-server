@@ -153,7 +153,7 @@ hev_config_parse_auth (yaml_document_t *doc, yaml_node_t *base)
 
     if (user && pass) {
         strncpy (username, user, 255);
-        strncpy (username, pass, 255);
+        strncpy (password, pass, 255);
         auth_method = HEV_CONFIG_AUTH_METHOD_USERPASS;
     }
 
