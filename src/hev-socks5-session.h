@@ -10,6 +10,8 @@
 #ifndef __HEV_SOCKS5_SESSION_H__
 #define __HEV_SOCKS5_SESSION_H__
 
+#include <netinet/in.h>
+
 #include "hev-task.h"
 
 typedef struct _HevSocks5SessionBase HevSocks5SessionBase;
@@ -26,6 +28,7 @@ struct _HevSocks5SessionBase
 };
 
 HevSocks5Session *hev_socks5_session_new (int client_fd,
+                                          struct sockaddr_in6 *saddr,
                                           HevSocks5SessionCloseNotify notify,
                                           void *notify_data);
 

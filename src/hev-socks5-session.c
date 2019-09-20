@@ -7,12 +7,12 @@
  ============================================================================
  */
 
+#include <stdio.h>
 #include <stdint.h>
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 
 #include "hev-socks5-session.h"
@@ -65,6 +65,7 @@ struct _HevSocks5Session
     int s5_cmd;
     struct sockaddr_in6 addr;
 
+    char saddr[64];
     HevSocks5SessionCloseNotify notify;
     void *notify_data;
 };
@@ -111,8 +112,8 @@ struct _Socks5ReqResHeader
 } __attribute__ ((packed));
 
 HevSocks5Session *
-hev_socks5_session_new (int client_fd, HevSocks5SessionCloseNotify notify,
-                        void *notify_data)
+hev_socks5_session_new (int client_fd, struct sockaddr_in6 *saddr,
+                        HevSocks5SessionCloseNotify notify, void *notify_data)
 {
     HevSocks5Session *self;
     HevTask *task;
@@ -137,6 +138,16 @@ hev_socks5_session_new (int client_fd, HevSocks5SessionCloseNotify notify,
 
     self->base.task = task;
     hev_task_set_priority (task, 9);
+
+    if (LOG_ON ()) {
+        char buf[64];
+        const char *sa;
+        int port;
+
+        sa = inet_ntop (AF_INET6, &saddr->sin6_addr, buf, sizeof (buf));
+        port = ntohs (saddr->sin6_port);
+        snprintf (self->saddr, sizeof (self->saddr), "[%s]:%u", sa, port);
+    }
 
     return self;
 }
@@ -342,27 +353,6 @@ socks5_read_request (HevSocks5Session *self)
     return STEP_WRITE_RESPONSE_ERROR_CMD;
 }
 
-static void
-socks5_session_log (HevSocks5Session *self, const char *daddr, int dport)
-{
-    struct sockaddr_in6 addr;
-    socklen_t len = sizeof (addr);
-    char buf[64];
-    const char *sa = NULL;
-    uint16_t port = 0;
-
-    if (getpeername (self->client_fd, (struct sockaddr *)&addr, &len) < 0)
-        return;
-
-    if (sizeof (addr) == len) {
-        sa = inet_ntop (AF_INET6, &addr.sin6_addr, buf, sizeof (buf));
-        port = ntohs (addr.sin6_port);
-    }
-
-    LOG_I ("Session %d created TCP [%s]:%u -> [%s]:%u", self->client_fd, sa,
-           port, daddr, dport);
-}
-
 static int
 socks5_parse_addr_ipv4 (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
 {
@@ -380,12 +370,15 @@ socks5_parse_addr_ipv4 (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
     ((uint16_t *)&self->addr.sin6_addr)[5] = 0xffff;
     ((uint32_t *)&self->addr.sin6_addr)[3] = socks5_r->ipv4.addr;
 
-    if (hev_logger_enabled ()) {
+    if (LOG_ON_I ()) {
         char buf[64];
-        const char *sa = NULL;
+        const char *sa;
+        int port;
 
         sa = inet_ntop (AF_INET6, &self->addr.sin6_addr, buf, sizeof (buf));
-        socks5_session_log (self, sa, ntohs (self->addr.sin6_port));
+        port = ntohs (self->addr.sin6_port);
+
+        LOG_I ("Session %s: created TCP -> [%s]:%u", self->saddr, sa, port);
     }
 
     return 0;
@@ -407,12 +400,15 @@ socks5_parse_addr_ipv6 (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
     self->addr.sin6_port = socks5_r->ipv6.port;
     __builtin_memcpy (&self->addr.sin6_addr, socks5_r->ipv6.addr, 16);
 
-    if (hev_logger_enabled ()) {
+    if (LOG_ON_I ()) {
         char buf[64];
-        const char *sa = NULL;
+        const char *sa;
+        int port;
 
         sa = inet_ntop (AF_INET6, &self->addr.sin6_addr, buf, sizeof (buf));
-        socks5_session_log (self, sa, ntohs (self->addr.sin6_port));
+        port = ntohs (self->addr.sin6_port);
+
+        LOG_I ("Session %s: created TCP -> [%s]:%u", self->saddr, sa, port);
     }
 
     return 0;
@@ -448,10 +444,8 @@ socks5_parse_addr_domain (HevSocks5Session *self, Socks5ReqResHeader *socks5_r)
                       socks5_r->domain.addr + socks5_r->domain.len, 2);
 
     socks5_r->domain.addr[socks5_r->domain.len] = '\0';
-    if (hev_logger_enabled ()) {
-        socks5_session_log (self, (const char *)socks5_r->domain.addr,
-                            ntohs (self->addr.sin6_port));
-    }
+    LOG_I ("Session %s: created TCP -> [%s]:%u", self->saddr,
+           (const char *)socks5_r->domain.addr, ntohs (self->addr.sin6_port));
 
     /* check is ipv4 or ipv6 addr string */
     if (inet_pton (AF_INET, (const char *)socks5_r->domain.addr,
@@ -635,7 +629,7 @@ socks5_do_fwd_dns (HevSocks5Session *self)
     struct sockaddr *addr = (struct sockaddr *)&self->addr;
     const socklen_t addr_len = sizeof (self->addr);
 
-    LOG_I ("Session %d created DNS", self->client_fd);
+    LOG_I ("Session %s: created DNS", self->saddr);
 
     dns_fd = hev_task_io_socket_socket (AF_INET6, SOCK_DGRAM, 0);
     if (dns_fd == -1)
@@ -749,10 +743,10 @@ socks5_close_session (HevSocks5Session *self)
         close (self->remote_fd);
     close (self->client_fd);
 
+    LOG_I ("Session %s: closed", self->saddr);
+
     self->notify (self, self->notify_data);
     hev_socks5_session_unref (self);
-
-    LOG_I ("Session %d closed", self->client_fd);
 
     return STEP_NULL;
 }
