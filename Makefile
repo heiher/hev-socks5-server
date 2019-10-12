@@ -20,7 +20,7 @@ BUILDDIR=build
 INSTDIR=/usr/local
 THIRDPARTDIR=third-part
 
-CONFIG=$(CONFDIR)/main.ini
+CONFIG=$(CONFDIR)/main.yml
 TARGET=$(BINDIR)/hev-socks5-server
 THIRDPARTS=$(THIRDPARTDIR)/yaml $(THIRDPARTDIR)/hev-task-system
 
@@ -64,20 +64,20 @@ clean : tp-clean
 	$(ECHO_PREFIX) $(RM) -rf $(BINDIR) $(BUILDDIR)
 	@printf $(CLEANMSG) $(PROJECT)
 
-install : $(INSTDIR)/bin/$(PROJECT) $(INSTDIR)/etc/$(PROJECT).conf
+install : $(INSTDIR)/bin/$(PROJECT) $(INSTDIR)/etc/$(PROJECT).yml
 
 uninstall :
 	$(ECHO_PREFIX) $(RM) -rf $(INSTDIR)/bin/$(PROJECT)
 	@printf $(UNINSMSG) $(INSTDIR)/bin/$(PROJECT)
-	$(ECHO_PREFIX) $(RM) -rf $(INSTDIR)/etc/$(PROJECT).conf
-	@printf $(UNINSMSG) $(INSTDIR)/etc/$(PROJECT).conf
+	$(ECHO_PREFIX) $(RM) -rf $(INSTDIR)/etc/$(PROJECT).yml
+	@printf $(UNINSMSG) $(INSTDIR)/etc/$(PROJECT).yml
 
 $(INSTDIR)/bin/$(PROJECT) : $(TARGET)
 	$(ECHO_PREFIX) install -d -m 0755 $(dir $@)
 	$(ECHO_PREFIX) install -m 0755 $< $@
 	@printf $(INSTMSG) $< $@
 
-$(INSTDIR)/etc/$(PROJECT).conf : $(CONFIG)
+$(INSTDIR)/etc/$(PROJECT).yml : $(CONFIG)
 	$(ECHO_PREFIX) install -d -m 0755 $(dir $@)
 	$(ECHO_PREFIX) install -m 0644 $< $@
 	@printf $(INSTMSG) $< $@
