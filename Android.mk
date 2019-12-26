@@ -36,4 +36,4 @@ ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
 LOCAL_CFLAGS += -mfpu=neon
 endif
 LOCAL_STATIC_LIBRARIES := yaml hev-task-system
-include $(BUILD_SHARED_LIBRARY)
+include $(BUILD_EXECUTABLE)
