@@ -7,24 +7,26 @@
  ============================================================================
  */
 
+#include <errno.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <errno.h>
 #include <string.h>
-#include <unistd.h>
 #include <signal.h>
-#include <pthread.h>
 #include <sys/ioctl.h>
+#include <unistd.h>
 
-#include "hev-socks5-server.h"
-#include "hev-socks5-worker.h"
+#include <hev-task.h>
+#include <hev-task-io.h>
+#include <hev-task-io-socket.h>
+#include <hev-task-system.h>
+#include <hev-memory-allocator.h>
+
 #include "hev-config.h"
 #include "hev-logger.h"
-#include "hev-task.h"
-#include "hev-task-io.h"
-#include "hev-task-io-socket.h"
-#include "hev-task-system.h"
-#include "hev-memory-allocator.h"
+#include "hev-socks5-worker.h"
+
+#include "hev-socks5-server.h"
 
 typedef struct _HevSocks5WorkerData HevSocks5WorkerData;
 
