@@ -7,17 +7,18 @@
  ============================================================================
  */
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/uio.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <time.h>
+#include <unistd.h>
+
+#include "hev-config.h"
 
 #include "hev-logger.h"
-#include "hev-config.h"
 
 static int fd = -1;
 static HevLoggerLevel req_level;
