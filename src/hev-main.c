@@ -12,11 +12,12 @@
 #include <unistd.h>
 #include <sys/resource.h>
 
-#include "hev-main.h"
 #include "hev-config.h"
 #include "hev-config-const.h"
 #include "hev-logger.h"
 #include "hev-socks5-server.h"
+
+#include "hev-main.h"
 
 static void
 show_help (const char *self_path)
