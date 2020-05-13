@@ -561,10 +561,9 @@ socks5_do_connect (HevSocks5Session *self)
     hev_task_add_fd (task, self->remote_fd, POLLIN | POLLOUT);
 
     /* connect */
-    if (connect (self->remote_fd, addr, addr_len) < 0) {
-        if ((errno != EINPROGRESS) && (errno != EALREADY))
-            return STEP_WRITE_RESPONSE_ERROR_HOST;
-    }
+    if (hev_task_io_socket_connect (self->remote_fd, addr, addr_len,
+                                    socks5_session_task_io_yielder, self) < 0)
+        return STEP_WRITE_RESPONSE_ERROR_HOST;
 
     return STEP_WRITE_RESPONSE;
 }
