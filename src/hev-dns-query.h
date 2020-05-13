@@ -2,8 +2,8 @@
  ============================================================================
  Name        : hev-dns-query.h
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2019 everyone.
- Description : Simple DNS query generator
+ Copyright   : Copyright (c) 2017 - 2020 Everyone.
+ Description : Simple DNS Query Generator
  ============================================================================
  */
 
