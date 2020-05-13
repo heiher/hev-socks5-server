@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-config.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2019 Heiher.
+ Copyright   : Copyright (c) 2017 - 2020 Heiher.
  Description : Config
  ============================================================================
  */
