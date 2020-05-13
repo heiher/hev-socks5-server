@@ -2,8 +2,8 @@
  ============================================================================
  Name        : hev-socks5-server.h
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 everyone.
- Description : Socks5 server
+ Copyright   : Copyright (c) 2017 - 2020 Heiher.
+ Description : Socks5 Server
  ============================================================================
  */
 
