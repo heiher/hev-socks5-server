@@ -2,8 +2,8 @@
  ============================================================================
  Name        : hev-socks5-session.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2019 everyone.
- Description : Socks5 session
+ Copyright   : Copyright (c) 2017 - 2020 Heiher.
+ Description : Socks5 Session
  ============================================================================
  */
 
