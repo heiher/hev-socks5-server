@@ -66,19 +66,19 @@ hev_socks5_worker_new (int fd)
     self->event_fds[0] = -1;
     self->event_fds[1] = -1;
 
-    self->task_worker = hev_task_new (8192);
+    self->task_worker = hev_task_new (-1);
     if (!self->task_worker) {
         LOG_E ("Create worker's task failed!");
         goto exit_free;
     }
 
-    self->task_event = hev_task_new (8192);
+    self->task_event = hev_task_new (-1);
     if (!self->task_event) {
         LOG_E ("Create event's task failed!");
         goto exit_free_task_worker;
     }
 
-    self->task_session_manager = hev_task_new (8192);
+    self->task_session_manager = hev_task_new (-1);
     if (!self->task_session_manager) {
         LOG_E ("Create session manager's task failed!");
         goto exit_free_task_event;
