@@ -7,20 +7,18 @@
 #
 FROM alpine AS builder
 
-ENV VERSION=1.9.9
-ENV GIT_URL=https://github.com/heiher/hev-socks5-server.git
+COPY . /tmp/hev-socks5-server
 
-# add depends
+# build
 RUN apk update \
-  && apk add --no-cache --virtual .build-deps build-base git
-
-# build executable
-RUN git clone $GIT_URL --branch $VERSION --recurse-submodules -j2 && cd hev-socks5-server \
-  && make -j$(nproc) && make install INSTDIR="/app" \
-  && cd .. && rm -r hev-socks5-server
-
-# clean up
-RUN apk del .build-deps \
+  && apk add --no-cache --virtual .build-deps build-base \
+  && cd /tmp/hev-socks5-server \
+  && make -j$(nproc) \
+  && make install INSTDIR="/app" \
+  && make clean \
+  && cd / \
+  && rm -r /tmp/hev-socks5-server \
+  && apk del .build-deps \
   && rm -rf /var/cache/apk/*
 
 #
@@ -38,7 +36,7 @@ RUN apk update \
 # copy files
 COPY --from=builder /app /app/
 RUN chown nobody:nobody /app/etc
-COPY entrypoint.sh /app/entrypoint.sh
+COPY docker/entrypoint.sh /app/entrypoint.sh
 
 USER nobody
 ENTRYPOINT ["/app/entrypoint.sh"]
