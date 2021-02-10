@@ -12,8 +12,8 @@ AUTH
 ```
 
 ```bash
-cd hev-socks5-server/docker
-docker build -t hev-socks5-server .
+cd hev-socks5-server
+docker build -t hev-socks5-server -f docker/Dockerfile .
 docker run -d \
   --name hev-socks5-server \
   --restart always \
