@@ -6,6 +6,7 @@ HevSocks5Server is a simple, lightweight socks5 server for Unix.
 
 **Features**
 * standard `CONNECT` command.
+* private `UDPFWD` command. (see [tunnel](https://gitlab.com/hev/hev-socks5-tunnel))
 * private `DNSFWD` command. (see [tproxy](https://gitlab.com/hev/hev-socks5-tproxy))
 * username/password authentication.
 * IPv4/IPv6. (dual stack)
