@@ -921,7 +921,7 @@ socks5_do_fwd_udp (HevSocks5Session *self)
         if (res_b >= 0)
             res_b = udp_fwd_b (self);
 
-        if (res_f < 0 && res_b < 0)
+        if (res_f < 0 || res_b < 0)
             break;
         else if (res_f > 0 || res_b > 0)
             type = HEV_TASK_YIELD;
