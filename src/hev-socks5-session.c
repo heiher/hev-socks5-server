@@ -999,7 +999,22 @@ socks5_close_session (HevSocks5Session *self)
         close (self->remote_fd);
     close (self->client_fd);
 
-    LOG_I ("Session %s: closed", self->saddr);
+    if (LOG_ON ()) {
+        const char *type;
+
+        switch (self->type) {
+        case TYPE_UDP:
+            type = "UDP";
+            break;
+        case TYPE_DNS:
+            type = "DNS";
+            break;
+        default:
+            type = "TCP";
+        }
+
+        LOG_I ("Session %s: closed %s", self->saddr, type);
+    }
 
     self->notify (self, self->notify_data);
     hev_socks5_session_unref (self);
