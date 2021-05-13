@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-config.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2020 Heiher.
+ Copyright   : Copyright (c) 2017 - 2021 Heiher.
  Description : Config
  ============================================================================
  */
@@ -17,7 +17,6 @@
 static struct sockaddr_in6 listen_address;
 static struct sockaddr_in6 dns_address;
 static unsigned int workers;
-static int ipv6_first;
 static unsigned int auth_method;
 static char username[256];
 static char password[256];
@@ -81,8 +80,6 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
             listen_addr = value;
         else if (0 == strcmp (key, "dns-address"))
             dns_addr = value;
-        else if (0 == strcmp (key, "ipv6-first"))
-            ipv6_first = (0 == strcasecmp (value, "true")) ? 1 : 0;
     }
 
     if (!workers) {
@@ -296,12 +293,6 @@ hev_config_get_dns_address (socklen_t *addr_len)
 {
     *addr_len = sizeof (dns_address);
     return (struct sockaddr *)&dns_address;
-}
-
-int
-hev_config_get_ipv6_first (void)
-{
-    return ipv6_first;
 }
 
 unsigned int

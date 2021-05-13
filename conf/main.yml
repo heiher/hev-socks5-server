@@ -9,8 +9,6 @@ main:
   listen-address: '::'
   # DNS server address (ipv4|ipv6)
   dns-address: 8.8.8.8
-  # Resolve domain to IPv6 address first
-  ipv6-first: false
 
 #auth:
 #  username:

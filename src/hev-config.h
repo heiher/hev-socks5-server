@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-config.h
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2020 Heiher.
+ Copyright   : Copyright (c) 2017 - 2021 Heiher.
  Description : Config
  ============================================================================
  */
@@ -27,8 +27,6 @@ unsigned int hev_config_get_workers (void);
 
 struct sockaddr *hev_config_get_listen_address (socklen_t *addr_len);
 struct sockaddr *hev_config_get_dns_address (socklen_t *addr_len);
-
-int hev_config_get_ipv6_first (void);
 
 unsigned int hev_config_get_auth_method (void);
 const char *hev_config_get_auth_username (void);
