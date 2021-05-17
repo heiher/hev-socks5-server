@@ -2,54 +2,36 @@
  ============================================================================
  Name        : hev-config.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2021 Heiher.
+ Copyright   : Copyright (c) 2017 - 2021 hev
  Description : Config
  ============================================================================
  */
 
 #include <stdio.h>
 #include <arpa/inet.h>
+
 #include <yaml.h>
+#include <hev-socks5-proto.h>
 
+#include "hev-logger.h"
 #include "hev-config.h"
-#include "hev-config-const.h"
 
-static struct sockaddr_in6 listen_address;
-static struct sockaddr_in6 dns_address;
 static unsigned int workers;
-static unsigned int auth_method;
+static char listen_address[256];
+static char listen_port[8];
 static char username[256];
 static char password[256];
 static char log_file[1024];
-static char log_level[16];
 static char pid_file[1024];
 static int limit_nofile = -2;
-
-static int
-address_to_sockaddr (const char *address, unsigned short port,
-                     struct sockaddr_in6 *addr)
-{
-    __builtin_bzero (addr, sizeof (*addr));
-
-    addr->sin6_family = AF_INET6;
-    addr->sin6_port = htons (port);
-    if (inet_pton (AF_INET, address, &addr->sin6_addr.s6_addr[12]) == 1) {
-        ((uint16_t *)&addr->sin6_addr)[5] = 0xffff;
-    } else {
-        if (inet_pton (AF_INET6, address, &addr->sin6_addr) != 1) {
-            return -1;
-        }
-    }
-
-    return 0;
-}
+static int log_level = HEV_LOGGER_WARN;
 
 static int
 hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
 {
     yaml_node_pair_t *pair;
-    int port = 0;
-    const char *listen_addr = NULL, *dns_addr = NULL;
+    const char *addr = NULL;
+    const char *port = NULL;
 
     if (!base || YAML_MAPPING_NODE != base->type)
         return -1;
@@ -75,11 +57,9 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
         if (0 == strcmp (key, "workers"))
             workers = strtoul (value, NULL, 10);
         else if (0 == strcmp (key, "port"))
-            port = strtoul (value, NULL, 10);
+            port = value;
         else if (0 == strcmp (key, "listen-address"))
-            listen_addr = value;
-        else if (0 == strcmp (key, "dns-address"))
-            dns_addr = value;
+            addr = value;
     }
 
     if (!workers) {
@@ -92,25 +72,13 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
         return -1;
     }
 
-    if (!listen_addr) {
+    if (!addr) {
         fprintf (stderr, "Can't found main.listen-address!\n");
         return -1;
     }
 
-    if (address_to_sockaddr (listen_addr, port, &listen_address) < 0) {
-        fprintf (stderr, "Parse main.listen-address!\n");
-        return -1;
-    }
-
-    if (!dns_addr) {
-        fprintf (stderr, "Can't found main.dns-address!\n");
-        return -1;
-    }
-
-    if (address_to_sockaddr (dns_addr, 53, &dns_address) < 0) {
-        fprintf (stderr, "Parse main.dns-address!\n");
-        return -1;
-    }
+    strncpy (listen_port, port, 8 - 1);
+    strncpy (listen_address, addr, 256 - 1);
 
     return 0;
 }
@@ -151,10 +119,22 @@ hev_config_parse_auth (yaml_document_t *doc, yaml_node_t *base)
     if (user && pass) {
         strncpy (username, user, 255);
         strncpy (password, pass, 255);
-        auth_method = HEV_CONFIG_AUTH_METHOD_USERPASS;
     }
 
     return 0;
+}
+
+static int
+hev_config_parse_log_level (const char *value)
+{
+    if (0 == strcmp (value, "debug"))
+        return HEV_LOGGER_DEBUG;
+    else if (0 == strcmp (value, "info"))
+        return HEV_LOGGER_INFO;
+    else if (0 == strcmp (value, "error"))
+        return HEV_LOGGER_ERROR;
+
+    return HEV_LOGGER_WARN;
 }
 
 static int
@@ -188,7 +168,7 @@ hev_config_parse_misc (yaml_document_t *doc, yaml_node_t *base)
         else if (0 == strcmp (key, "log-file"))
             strncpy (log_file, value, 1024 - 1);
         else if (0 == strcmp (key, "log-level"))
-            strncpy (log_level, value, 16 - 1);
+            log_level = hev_config_parse_log_level (value);
         else if (0 == strcmp (key, "limit-nofile"))
             limit_nofile = strtol (value, NULL, 10);
     }
@@ -237,7 +217,7 @@ hev_config_parse_doc (yaml_document_t *doc)
 }
 
 int
-hev_config_init (const char *config_path)
+hev_config_init (const char *path)
 {
     yaml_parser_t parser;
     yaml_document_t doc;
@@ -247,15 +227,15 @@ hev_config_init (const char *config_path)
     if (!yaml_parser_initialize (&parser))
         goto exit;
 
-    fp = fopen (config_path, "r");
+    fp = fopen (path, "r");
     if (!fp) {
-        fprintf (stderr, "Open %s failed!\n", config_path);
+        fprintf (stderr, "Open %s failed!\n", path);
         goto exit_free_parser;
     }
 
     yaml_parser_set_input_file (&parser, fp);
     if (!yaml_parser_load (&parser, &doc)) {
-        fprintf (stderr, "Parse %s failed!\n", config_path);
+        fprintf (stderr, "Parse %s failed!\n", path);
         goto exit_close_fp;
     }
 
@@ -281,36 +261,40 @@ hev_config_get_workers (void)
     return workers;
 }
 
-struct sockaddr *
-hev_config_get_listen_address (socklen_t *addr_len)
+const char *
+hev_config_get_listen_address (void)
 {
-    *addr_len = sizeof (listen_address);
-    return (struct sockaddr *)&listen_address;
+    return listen_address;
 }
 
-struct sockaddr *
-hev_config_get_dns_address (socklen_t *addr_len)
+const char *
+hev_config_get_listen_port (void)
 {
-    *addr_len = sizeof (dns_address);
-    return (struct sockaddr *)&dns_address;
-}
-
-unsigned int
-hev_config_get_auth_method (void)
-{
-    return auth_method;
+    return listen_port;
 }
 
 const char *
 hev_config_get_auth_username (void)
 {
+    if ('\0' == username[0])
+        return NULL;
+
     return username;
 }
 
 const char *
 hev_config_get_auth_password (void)
 {
+    if ('\0' == password[0])
+        return NULL;
+
     return password;
+}
+
+int
+hev_config_get_misc_limit_nofile (void)
+{
+    return limit_nofile;
 }
 
 const char *
@@ -322,28 +306,17 @@ hev_config_get_misc_pid_file (void)
     return pid_file;
 }
 
-int
-hev_config_get_misc_limit_nofile (void)
-{
-    return limit_nofile;
-}
-
 const char *
 hev_config_get_misc_log_file (void)
 {
     if ('\0' == log_file[0])
-        return NULL;
-    if (0 == strcmp (log_file, "null"))
-        return NULL;
+        return "stderr";
 
     return log_file;
 }
 
-const char *
+int
 hev_config_get_misc_log_level (void)
 {
-    if ('\0' == log_level[0])
-        return "warn";
-
     return log_level;
 }

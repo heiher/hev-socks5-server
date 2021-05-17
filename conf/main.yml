@@ -7,16 +7,14 @@ main:
   port: 1080
   # Listen address (ipv4|ipv6)
   listen-address: '::'
-  # DNS server address (ipv4|ipv6)
-  dns-address: 8.8.8.8
 
 #auth:
 #  username:
 #  password:
 
 #misc:
-   # null, stdout, stderr or file-path
-#  log-file: null
+   # stdout, stderr or file-path
+#  log-file: stderr
    # debug, info, warn or error
 #  log-level: warn
    # If present, run as a daemon with this pid file

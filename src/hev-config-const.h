@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-config-const.h
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2021 Heiher.
+ Copyright   : Copyright (c) 2017 - 2021 hev
  Description : Config Constants
  ============================================================================
  */
@@ -13,5 +13,10 @@
 #define MAJOR_VERSION (2)
 #define MINOR_VERSION (1)
 #define MICRO_VERSION (1)
+
+static const int IO_TIMEOUT = 60000;
+static const int CONNECT_TIMEOUT = 3000;
+
+static const int TASK_STACK_SIZE = 8192;
 
 #endif /* __HEV_CONFIG_CONST_H__ */

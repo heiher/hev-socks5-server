@@ -5,11 +5,10 @@
 HevSocks5Server is a simple, lightweight socks5 server for Unix.
 
 **Features**
-* standard `CONNECT` command.
-* private `UDPFWD` command. (see [tunnel](https://gitlab.com/hev/hev-socks5-tunnel))
-* private `DNSFWD` command. (see [tproxy](https://gitlab.com/hev/hev-socks5-tproxy))
-* username/password authentication.
 * IPv4/IPv6. (dual stack)
+* Standard `CONNECT` command.
+* Extended `UDPFWD` command. (UDP over TCP)
+* Username/password authentication.
 
 ## How to Build
 
@@ -44,18 +43,14 @@ main:
   port: 1080
   # Listen address (ipv4|ipv6)
   listen-address: '::'
-  # DNS server address (ipv4|ipv6)
-  dns-address: 8.8.8.8
-  # Resolve domain to IPv6 address first
-  ipv6-first: false
 
 #auth:
 #  username:
 #  password:
 
 #misc:
-   # null, stdout, stderr or file-path
-#  log-file: null
+   # stdout, stderr or file-path
+#  log-file: stderr
    # debug, info, warn or error
 #  log-level: warn
    # If present, run as a daemon with this pid file

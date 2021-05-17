@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-socks5-session.h
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2020 Heiher.
+ Copyright   : Copyright (c) 2017 - 2021 hev
  Description : Socks5 Session
  ============================================================================
  */
@@ -10,31 +10,36 @@
 #ifndef __HEV_SOCKS5_SESSION_H__
 #define __HEV_SOCKS5_SESSION_H__
 
-#include <netinet/in.h>
+#include <hev-task.h>
+#include <hev-socks5-server.h>
 
-#include "hev-task.h"
+#include "hev-list.h"
 
-typedef struct _HevSocks5SessionBase HevSocks5SessionBase;
+#define HEV_SOCKS5_SESSION(p) ((HevSocks5Session *)p)
+#define HEV_SOCKS5_SESSION_CLASS(p) ((HevSocks5SessionClass *)p)
+
 typedef struct _HevSocks5Session HevSocks5Session;
-typedef void (*HevSocks5SessionCloseNotify) (HevSocks5Session *self,
-                                             void *data);
+typedef struct _HevSocks5SessionClass HevSocks5SessionClass;
 
-struct _HevSocks5SessionBase
+struct _HevSocks5Session
 {
-    HevSocks5SessionBase *prev;
-    HevSocks5SessionBase *next;
+    HevSocks5Server base;
+
+    HevListNode node;
     HevTask *task;
-    int hp;
+    void *data;
 };
 
-HevSocks5Session *hev_socks5_session_new (int client_fd,
-                                          struct sockaddr_in6 *saddr,
-                                          HevSocks5SessionCloseNotify notify,
-                                          void *notify_data);
+struct _HevSocks5SessionClass
+{
+    HevSocks5ServerClass base;
+};
 
-HevSocks5Session *hev_socks5_session_ref (HevSocks5Session *self);
-void hev_socks5_session_unref (HevSocks5Session *self);
+int hev_socks5_session_construct (HevSocks5Session *self);
+void hev_socks5_session_destruct (HevSocks5 *base);
 
-void hev_socks5_session_run (HevSocks5Session *self);
+HevSocks5Session *hev_socks5_session_new (int fd);
+
+void hev_socks5_session_terminate (HevSocks5Session *self);
 
 #endif /* __HEV_SOCKS5_SESSION_H__ */

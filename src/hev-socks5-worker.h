@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-socks5-worker.h
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2020 Heiher.
+ Copyright   : Copyright (c) 2017 - 2021 hev
  Description : Socks5 Worker
  ============================================================================
  */
