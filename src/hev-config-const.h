@@ -11,8 +11,8 @@
 #define __HEV_CONFIG_CONST_H__
 
 #define MAJOR_VERSION (2)
-#define MINOR_VERSION (1)
-#define MICRO_VERSION (1)
+#define MINOR_VERSION (2)
+#define MICRO_VERSION (0)
 
 static const int IO_TIMEOUT = 60000;
 static const int CONNECT_TIMEOUT = 3000;
