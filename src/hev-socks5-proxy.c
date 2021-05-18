@@ -8,6 +8,7 @@
  */
 
 #include <signal.h>
+#include <string.h>
 #include <unistd.h>
 #include <pthread.h>
 
@@ -113,6 +114,7 @@ static int
 hev_socks5_proxy_socket (void)
 {
     struct addrinfo hints = { 0 };
+    struct sockaddr_in6 saddr;
     struct addrinfo *result;
     const char *addr;
     const char *port;
@@ -125,7 +127,7 @@ hev_socks5_proxy_socket (void)
     addr = hev_config_get_listen_address ();
     port = hev_config_get_listen_port ();
 
-    hints.ai_family = AF_INET6;
+    hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
@@ -135,10 +137,25 @@ hev_socks5_proxy_socket (void)
         goto exit;
     }
 
+    if (result->ai_family == AF_INET) {
+        struct sockaddr_in *adp;
+
+        adp = (struct sockaddr_in *)result->ai_addr;
+        saddr.sin6_family = AF_INET6;
+        saddr.sin6_port = adp->sin_port;
+        memset (&saddr.sin6_addr, 0, 10);
+        saddr.sin6_addr.s6_addr[10] = 0xff;
+        saddr.sin6_addr.s6_addr[11] = 0xff;
+        memcpy (&saddr.sin6_addr.s6_addr[12], &adp->sin_addr, 4);
+    } else if (result->ai_family == AF_INET6) {
+        memcpy (&saddr, result->ai_addr, sizeof (saddr));
+    }
+    freeaddrinfo (result);
+
     fd = hev_task_io_socket_socket (AF_INET6, SOCK_STREAM, 0);
     if (fd < 0) {
         LOG_E ("socks5 proxy socket");
-        goto free;
+        goto exit;
     }
 
     res = setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof (one));
@@ -147,7 +164,7 @@ hev_socks5_proxy_socket (void)
         goto close;
     }
 
-    res = bind (fd, result->ai_addr, result->ai_addrlen);
+    res = bind (fd, (struct sockaddr *)&saddr, sizeof (saddr));
     if (res < 0) {
         LOG_E ("socks5 proxy socket bind");
         goto close;
@@ -159,14 +176,10 @@ hev_socks5_proxy_socket (void)
         goto close;
     }
 
-    freeaddrinfo (result);
-
     return fd;
 
 close:
     close (fd);
-free:
-    freeaddrinfo (result);
 exit:
     return -1;
 }
