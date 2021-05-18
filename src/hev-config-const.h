@@ -12,7 +12,7 @@
 
 #define MAJOR_VERSION (2)
 #define MINOR_VERSION (2)
-#define MICRO_VERSION (0)
+#define MICRO_VERSION (1)
 
 static const int IO_TIMEOUT = 60000;
 static const int CONNECT_TIMEOUT = 3000;
