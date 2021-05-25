@@ -6,8 +6,6 @@ Available environment variables:
 ```bash
 PORT
 LISTEN_ADDRESS
-DNS_ADDRESS
-IPV6_FIRST
 AUTH
 ```
 
@@ -19,7 +17,6 @@ docker run -d \
   --restart always \
   --net host \
   -e PORT=1081 \
-  -e IPV6_FIRST=true \
   -e AUTH="user:pass" \
   hev-socks5-server
 ```
