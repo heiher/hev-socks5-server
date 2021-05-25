@@ -19,7 +19,6 @@
 #include "hev-config.h"
 #include "hev-logger.h"
 #include "hev-compiler.h"
-#include "hev-config-const.h"
 #include "hev-socks5-session.h"
 
 #include "hev-socks5-worker.h"
@@ -130,12 +129,14 @@ hev_socks5_worker_task_entry (void *data)
 {
     HevSocks5Worker *self = data;
     HevListNode *node;
+    int stack_size;
     int fd;
 
     LOG_D ("socks5 worker task run");
 
     fd = self->fd;
     hev_task_add_fd (hev_task_self (), fd, POLLIN);
+    stack_size = hev_config_get_misc_task_stack_size ();
 
     for (;;) {
         HevSocks5Session *s;
@@ -156,7 +157,7 @@ hev_socks5_worker_task_entry (void *data)
             continue;
         }
 
-        task = hev_task_new (TASK_STACK_SIZE);
+        task = hev_task_new (stack_size);
         if (!task) {
             hev_socks5_unref (HEV_SOCKS5 (s));
             continue;

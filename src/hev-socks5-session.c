@@ -11,7 +11,6 @@
 
 #include "hev-logger.h"
 #include "hev-config.h"
-#include "hev-config-const.h"
 
 #include "hev-socks5-session.h"
 
@@ -27,6 +26,8 @@ static HevSocks5SessionClass _klass = {
 int
 hev_socks5_session_construct (HevSocks5Session *self)
 {
+    int read_write_timeout;
+    int connect_timeout;
     const char *user;
     const char *pass;
     int res;
@@ -44,8 +45,11 @@ hev_socks5_session_construct (HevSocks5Session *self)
     if (user && pass)
         hev_socks5_server_set_auth_user_pass (&self->base, user, pass);
 
-    hev_socks5_set_timeout (HEV_SOCKS5 (self), IO_TIMEOUT);
-    hev_socks5_server_set_connect_timeout (&self->base, CONNECT_TIMEOUT);
+    connect_timeout = hev_config_get_misc_connect_timeout ();
+    read_write_timeout = hev_config_get_misc_read_write_timeout ();
+
+    hev_socks5_set_timeout (HEV_SOCKS5 (self), read_write_timeout);
+    hev_socks5_server_set_connect_timeout (&self->base, connect_timeout);
 
     return 0;
 }

@@ -23,6 +23,9 @@ static char username[256];
 static char password[256];
 static char log_file[1024];
 static char pid_file[1024];
+static int task_stack_size = 8192;
+static int connect_timeout = 5000;
+static int read_write_timeout = 60000;
 static int limit_nofile = -2;
 static int log_level = HEV_LOGGER_WARN;
 
@@ -163,7 +166,13 @@ hev_config_parse_misc (yaml_document_t *doc, yaml_node_t *base)
             break;
         value = (const char *)node->data.scalar.value;
 
-        if (0 == strcmp (key, "pid-file"))
+        if (0 == strcmp (key, "task-stack-size"))
+            task_stack_size = strtoul (value, NULL, 10);
+        else if (0 == strcmp (key, "connect-timeout"))
+            connect_timeout = strtoul (value, NULL, 10);
+        else if (0 == strcmp (key, "read-write-timeout"))
+            read_write_timeout = strtoul (value, NULL, 10);
+        else if (0 == strcmp (key, "pid-file"))
             strncpy (pid_file, value, 1024 - 1);
         else if (0 == strcmp (key, "log-file"))
             strncpy (log_file, value, 1024 - 1);
@@ -289,6 +298,24 @@ hev_config_get_auth_password (void)
         return NULL;
 
     return password;
+}
+
+int
+hev_config_get_misc_task_stack_size (void)
+{
+    return task_stack_size;
+}
+
+int
+hev_config_get_misc_connect_timeout (void)
+{
+    return connect_timeout;
+}
+
+int
+hev_config_get_misc_read_write_timeout (void)
+{
+    return read_write_timeout;
 }
 
 int
