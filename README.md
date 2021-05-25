@@ -49,6 +49,12 @@ main:
 #  password:
 
 #misc:
+   # task stack size (bytes)
+#  task-stack-size: 8192
+   # connect timeout (ms)
+#  connect-timeout: 5000
+   # read-write timeout (ms)
+#  read-write-timeout: 60000
    # stdout, stderr or file-path
 #  log-file: stderr
    # debug, info, warn or error
