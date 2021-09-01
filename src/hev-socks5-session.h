@@ -17,6 +17,7 @@
 
 #define HEV_SOCKS5_SESSION(p) ((HevSocks5Session *)p)
 #define HEV_SOCKS5_SESSION_CLASS(p) ((HevSocks5SessionClass *)p)
+#define HEV_SOCKS5_SESSION_TYPE (hev_socks5_session_class ())
 
 typedef struct _HevSocks5Session HevSocks5Session;
 typedef struct _HevSocks5SessionClass HevSocks5SessionClass;
@@ -35,7 +36,7 @@ struct _HevSocks5SessionClass
     HevSocks5ServerClass base;
 };
 
-HevSocks5Class *hev_socks5_session_get_class (void);
+HevObjectClass *hev_socks5_session_class (void);
 
 int hev_socks5_session_construct (HevSocks5Session *self, int fd);
 

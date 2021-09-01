@@ -82,7 +82,7 @@ hev_socks5_session_construct (HevSocks5Session *self, int fd)
 
     LOG_D ("%p socks5 session construct", self);
 
-    HEV_SOCKS5 (self)->klass = hev_socks5_session_get_class ();
+    HEV_OBJECT (self)->klass = HEV_SOCKS5_SESSION_TYPE;
 
     user = hev_config_get_auth_username ();
     pass = hev_config_get_auth_password ();
@@ -99,33 +99,33 @@ hev_socks5_session_construct (HevSocks5Session *self, int fd)
 }
 
 static void
-hev_socks5_session_destruct (HevSocks5 *base)
+hev_socks5_session_destruct (HevObject *base)
 {
     HevSocks5Session *self = HEV_SOCKS5_SESSION (base);
 
     LOG_D ("%p socks5 session destruct", self);
 
-    hev_socks5_server_get_class ()->finalizer (base);
+    HEV_SOCKS5_SERVER_TYPE->finalizer (base);
 }
 
-HevSocks5Class *
-hev_socks5_session_get_class (void)
+HevObjectClass *
+hev_socks5_session_class (void)
 {
     static HevSocks5SessionClass klass;
     HevSocks5SessionClass *kptr = &klass;
+    HevObjectClass *okptr = HEV_OBJECT_CLASS (kptr);
 
-    if (!HEV_SOCKS5_CLASS (kptr)->name) {
+    if (!okptr->name) {
         HevSocks5Class *skptr;
-        void *ptr;
 
-        ptr = hev_socks5_server_get_class ();
-        memcpy (kptr, ptr, sizeof (HevSocks5ServerClass));
+        memcpy (kptr, HEV_SOCKS5_SERVER_TYPE, sizeof (HevSocks5ServerClass));
+
+        okptr->name = "HevSocks5Session";
+        okptr->finalizer = hev_socks5_session_destruct;
 
         skptr = HEV_SOCKS5_CLASS (kptr);
-        skptr->name = "HevSocks5Session";
-        skptr->finalizer = hev_socks5_session_destruct;
         skptr->binder = hev_socks5_session_bind;
     }
 
-    return HEV_SOCKS5_CLASS (kptr);
+    return okptr;
 }

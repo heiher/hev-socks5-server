@@ -121,7 +121,7 @@ hev_socks5_session_task_entry (void *data)
     hev_socks5_server_run (HEV_SOCKS5_SERVER (s));
 
     hev_list_del (&self->session_set, &s->node);
-    hev_socks5_unref (HEV_SOCKS5 (s));
+    hev_object_unref (HEV_OBJECT (s));
 }
 
 static void
@@ -159,7 +159,7 @@ hev_socks5_worker_task_entry (void *data)
 
         task = hev_task_new (stack_size);
         if (!task) {
-            hev_socks5_unref (HEV_SOCKS5 (s));
+            hev_object_unref (HEV_OBJECT (s));
             continue;
         }
 
