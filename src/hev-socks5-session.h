@@ -37,7 +37,7 @@ struct _HevSocks5SessionClass
 
 HevSocks5Class *hev_socks5_session_get_class (void);
 
-int hev_socks5_session_construct (HevSocks5Session *self);
+int hev_socks5_session_construct (HevSocks5Session *self, int fd);
 
 HevSocks5Session *hev_socks5_session_new (int fd);
 

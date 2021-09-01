@@ -27,15 +27,13 @@ hev_socks5_session_new (int fd)
     if (!self)
         return NULL;
 
-    LOG_D ("%p socks5 session new", self);
-
-    res = hev_socks5_session_construct (self);
+    res = hev_socks5_session_construct (self, fd);
     if (res < 0) {
         hev_free (self);
         return NULL;
     }
 
-    HEV_SOCKS5 (self)->fd = fd;
+    LOG_D ("%p socks5 session new", self);
 
     return self;
 }
@@ -70,7 +68,7 @@ hev_socks5_session_bind (HevSocks5 *self, int sock)
 }
 
 int
-hev_socks5_session_construct (HevSocks5Session *self)
+hev_socks5_session_construct (HevSocks5Session *self, int fd)
 {
     int read_write_timeout;
     int connect_timeout;
@@ -78,7 +76,7 @@ hev_socks5_session_construct (HevSocks5Session *self)
     const char *pass;
     int res;
 
-    res = hev_socks5_server_construct (&self->base);
+    res = hev_socks5_server_construct (&self->base, fd);
     if (res < 0)
         return -1;
 
