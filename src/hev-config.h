@@ -20,6 +20,8 @@ unsigned int hev_config_get_workers (void);
 const char *hev_config_get_listen_address (void);
 const char *hev_config_get_listen_port (void);
 
+const char *hev_config_get_bind_address (void);
+
 const char *hev_config_get_auth_username (void);
 const char *hev_config_get_auth_password (void);
 

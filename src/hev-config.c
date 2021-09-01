@@ -19,6 +19,7 @@
 static unsigned int workers;
 static char listen_address[256];
 static char listen_port[8];
+static char bind_address[256];
 static char username[256];
 static char password[256];
 static char log_file[1024];
@@ -35,6 +36,7 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
     yaml_node_pair_t *pair;
     const char *addr = NULL;
     const char *port = NULL;
+    const char *bind = NULL;
 
     if (!base || YAML_MAPPING_NODE != base->type)
         return -1;
@@ -63,6 +65,8 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
             port = value;
         else if (0 == strcmp (key, "listen-address"))
             addr = value;
+        else if (0 == strcmp (key, "bind-address"))
+            bind = value;
     }
 
     if (!workers) {
@@ -82,6 +86,9 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
 
     strncpy (listen_port, port, 8 - 1);
     strncpy (listen_address, addr, 256 - 1);
+
+    if (bind)
+        strncpy (bind_address, bind, 256 - 1);
 
     return 0;
 }
@@ -280,6 +287,15 @@ const char *
 hev_config_get_listen_port (void)
 {
     return listen_port;
+}
+
+const char *
+hev_config_get_bind_address (void)
+{
+    if ('\0' == bind_address[0])
+        return NULL;
+
+    return bind_address;
 }
 
 const char *
