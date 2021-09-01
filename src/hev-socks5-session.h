@@ -35,8 +35,9 @@ struct _HevSocks5SessionClass
     HevSocks5ServerClass base;
 };
 
+HevSocks5Class *hev_socks5_session_get_class (void);
+
 int hev_socks5_session_construct (HevSocks5Session *self);
-void hev_socks5_session_destruct (HevSocks5 *base);
 
 HevSocks5Session *hev_socks5_session_new (int fd);
 
