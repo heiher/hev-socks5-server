@@ -43,6 +43,8 @@ main:
   port: 1080
   # Listen address (ipv4|ipv6)
   listen-address: '::'
+  # Bind source address (ipv4|ipv6)
+  bind-address: '::'
 
 #auth:
 #  username:
