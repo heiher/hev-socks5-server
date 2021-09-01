@@ -8,6 +8,7 @@
  */
 
 #include <string.h>
+#include <arpa/inet.h>
 
 #include <hev-memory-allocator.h>
 
@@ -46,6 +47,26 @@ hev_socks5_session_terminate (HevSocks5Session *self)
 
     hev_socks5_set_timeout (HEV_SOCKS5 (self), 0);
     hev_task_wakeup (self->task);
+}
+
+static int
+hev_socks5_session_bind (HevSocks5 *self, int sock)
+{
+    const char *addr = hev_config_get_bind_address ();
+    struct sockaddr_in6 saddr = { 0 };
+    int res;
+
+    LOG_D ("%p socks5 session bind", self);
+
+    if (!addr)
+        return 0;
+
+    saddr.sin6_family = AF_INET6;
+    res = inet_pton (AF_INET6, addr, &saddr.sin6_addr);
+    if (res == 0)
+        return -1;
+
+    return bind (sock, (struct sockaddr *)&saddr, sizeof (saddr));
 }
 
 int
@@ -105,6 +126,7 @@ hev_socks5_session_get_class (void)
         skptr = HEV_SOCKS5_CLASS (kptr);
         skptr->name = "HevSocks5Session";
         skptr->finalizer = hev_socks5_session_destruct;
+        skptr->binder = hev_socks5_session_bind;
     }
 
     return HEV_SOCKS5_CLASS (kptr);
