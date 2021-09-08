@@ -73,8 +73,9 @@ main:
 bin/hev-socks5-server conf/main.ini
 ```
 
-## Authors
-* **Heiher** - https://hev.cc
+## Contributors
+* **hev** - https://hev.cc
+* **pexcn** - <i@pexcn.me>
 
 ## License
 LGPL
