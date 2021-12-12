@@ -9,6 +9,7 @@
 
 #include <string.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
 
 #include <hev-memory-allocator.h>
 
