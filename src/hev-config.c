@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-config.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2021 hev
+ Copyright   : Copyright (c) 2017 - 2022 hev
  Description : Config
  ============================================================================
  */
@@ -17,6 +17,7 @@
 #include "hev-config.h"
 
 static unsigned int workers;
+static int listen_ipv6_only;
 static char listen_address[256];
 static char listen_port[8];
 static char bind_address[256];
@@ -65,6 +66,8 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
             port = value;
         else if (0 == strcmp (key, "listen-address"))
             addr = value;
+        else if (0 == strcmp (key, "listen-ipv6-only"))
+            listen_ipv6_only = (0 == strcasecmp (value, "true")) ? 1 : 0;
         else if (0 == strcmp (key, "bind-address"))
             bind = value;
     }
@@ -287,6 +290,12 @@ const char *
 hev_config_get_listen_port (void)
 {
     return listen_port;
+}
+
+int
+hev_config_get_listen_ipv6_only (void)
+{
+    return listen_ipv6_only;
 }
 
 const char *

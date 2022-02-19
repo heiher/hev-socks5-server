@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-socks5-proxy.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2021 hev
+ Copyright   : Copyright (c) 2017 - 2022 hev
  Description : Socks5 Proxy
  ============================================================================
  */
@@ -162,6 +162,14 @@ hev_socks5_proxy_socket (void)
     if (res < 0) {
         LOG_E ("socks5 proxy socket reuse");
         goto close;
+    }
+
+    if (hev_config_get_listen_ipv6_only ()) {
+        res = setsockopt (fd, IPPROTO_IPV6, IPV6_V6ONLY, &one, sizeof (one));
+        if (res < 0) {
+            LOG_E ("socks5 proxy ipv6 only");
+            goto close;
+        }
     }
 
     res = bind (fd, (struct sockaddr *)&saddr, sizeof (saddr));

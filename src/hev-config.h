@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-config.h
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2021 hev
+ Copyright   : Copyright (c) 2017 - 2022 hev
  Description : Config
  ============================================================================
  */
@@ -19,6 +19,7 @@ unsigned int hev_config_get_workers (void);
 
 const char *hev_config_get_listen_address (void);
 const char *hev_config_get_listen_port (void);
+int hev_config_get_listen_ipv6_only (void);
 
 const char *hev_config_get_bind_address (void);
 
