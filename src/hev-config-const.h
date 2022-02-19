@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-config-const.h
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2021 hev
+ Copyright   : Copyright (c) 2017 - 2022 hev
  Description : Config Constants
  ============================================================================
  */
@@ -12,6 +12,6 @@
 
 #define MAJOR_VERSION (2)
 #define MINOR_VERSION (2)
-#define MICRO_VERSION (7)
+#define MICRO_VERSION (8)
 
 #endif /* __HEV_CONFIG_CONST_H__ */
