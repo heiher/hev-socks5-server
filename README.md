@@ -43,6 +43,8 @@ main:
   port: 1080
   # Listen address (ipv4|ipv6)
   listen-address: '::'
+  # Listen ipv6 only
+  listen-ipv6-only: false
   # Bind source address (ipv4|ipv6)
   bind-address: '::'
 
