@@ -12,6 +12,8 @@
 #include <unistd.h>
 #include <sys/resource.h>
 
+#include <hev-task.h>
+#include <hev-socks5-misc.h>
 #include <hev-socks5-logger.h>
 
 #include "hev-config.h"
@@ -89,6 +91,12 @@ main (int argc, char *argv[])
 
     log_file = hev_config_get_misc_log_file ();
     log_level = hev_config_get_misc_log_level ();
+
+    res = hev_config_get_misc_task_stack_size ();
+    hev_socks5_set_task_stack_size (res);
+
+    res = hev_config_get_misc_udp_recv_buffer_size ();
+    hev_socks5_set_udp_recv_buffer_size (res);
 
     res = hev_logger_init (log_level, log_file);
     if (res < 0)
