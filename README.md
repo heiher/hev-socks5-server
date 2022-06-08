@@ -80,4 +80,4 @@ bin/hev-socks5-server conf/main.ini
 * **pexcn** - <i@pexcn.me>
 
 ## License
-LGPL
+GPLv3
