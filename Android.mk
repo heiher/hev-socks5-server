@@ -34,6 +34,7 @@ LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/src/core/include \
 	$(LOCAL_PATH)/third-part/yaml/src \
 	$(LOCAL_PATH)/third-part/hev-task-system/include
+LOCAL_CFLAGS += $(VERSION_CFLAGS)
 ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
 LOCAL_CFLAGS += -mfpu=neon
 endif

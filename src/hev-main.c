@@ -27,7 +27,8 @@ static void
 show_help (const char *self_path)
 {
     printf ("%s CONFIG_PATH\n", self_path);
-    printf ("Version: %u.%u.%u\n", MAJOR_VERSION, MINOR_VERSION, MICRO_VERSION);
+    printf ("Version: %u.%u.%u %s\n", MAJOR_VERSION, MINOR_VERSION,
+            MICRO_VERSION, COMMIT_ID);
 }
 
 static void

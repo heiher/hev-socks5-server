@@ -27,6 +27,7 @@ TARGET=$(BINDIR)/hev-socks5-server
 THIRDPARTS=$(THIRDPARTDIR)/yaml $(THIRDPARTDIR)/hev-task-system
 
 -include build.mk
+CCFLAGS+=$(VERSION_CFLAGS)
 CCSRCS=$(filter %.c,$(SRCFILES))
 ASSRCS=$(filter %.S,$(SRCFILES))
 LDOBJS=$(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(CCSRCS)) \
