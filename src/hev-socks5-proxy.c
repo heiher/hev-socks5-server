@@ -111,8 +111,9 @@ hev_socks5_proxy_fini (void)
 }
 
 static int
-hev_socks5_proxy_socket (void)
+hev_socks5_proxy_socket (int sfd)
 {
+    static int reuseport = -1;
     struct addrinfo hints = { 0 };
     struct sockaddr_in6 saddr;
     struct addrinfo *result;
@@ -123,6 +124,9 @@ hev_socks5_proxy_socket (void)
     int fd;
 
     LOG_D ("socks5 proxy socket");
+
+    if (reuseport < 0 && sfd >= 0)
+        return dup (sfd);
 
     addr = hev_config_get_listen_address ();
     port = hev_config_get_listen_port ();
@@ -164,6 +168,10 @@ hev_socks5_proxy_socket (void)
         goto close;
     }
 
+#ifdef SO_REUSEPORT
+    reuseport = setsockopt (fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof (one));
+#endif
+
     if (hev_config_get_listen_ipv6_only ()) {
         res = setsockopt (fd, IPPROTO_IPV6, IPV6_V6ONLY, &one, sizeof (one));
         if (res < 0) {
@@ -203,7 +211,7 @@ work_thread_handler (void *data)
         goto exit;
     }
 
-    fd = dup (listen_fd);
+    fd = hev_socks5_proxy_socket (listen_fd);
     if (fd < 0) {
         LOG_E ("socks5 proxy worker dup");
         goto free;
@@ -237,7 +245,7 @@ hev_socks5_proxy_task_entry (void *data)
 
     LOG_D ("socks5 proxy task run");
 
-    listen_fd = hev_socks5_proxy_socket ();
+    listen_fd = hev_socks5_proxy_socket (-1);
     if (listen_fd < 0)
         return;
 
