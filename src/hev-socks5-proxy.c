@@ -13,15 +13,13 @@
 #include <pthread.h>
 
 #include <hev-task.h>
-#include <hev-task-io.h>
-#include <hev-task-io-socket.h>
-#include <hev-task-dns.h>
 #include <hev-task-system.h>
 #include <hev-memory-allocator.h>
 
 #include "hev-config.h"
 #include "hev-logger.h"
 #include "hev-socks5-worker.h"
+#include "hev-socket-factory.h"
 
 #include "hev-socks5-proxy.h"
 
@@ -30,6 +28,7 @@ static unsigned int workers;
 
 static HevTask *task;
 static pthread_t *work_threads;
+static HevSocketFactory *factory;
 static HevSocks5Worker **worker_list;
 
 static void
@@ -88,6 +87,14 @@ hev_socks5_proxy_init (void)
         goto free;
     }
 
+    factory = hev_socket_factory_new (hev_config_get_listen_address (),
+                                      hev_config_get_listen_port (),
+                                      hev_config_get_listen_ipv6_only ());
+    if (!factory) {
+        LOG_E ("socks5 proxy socket factory");
+        goto free;
+    }
+
     return 0;
 
 free:
@@ -107,97 +114,9 @@ hev_socks5_proxy_fini (void)
         hev_free (work_threads);
     if (worker_list)
         hev_free (worker_list);
+    if (factory)
+        hev_socket_factory_destroy (factory);
     hev_task_system_fini ();
-}
-
-static int
-hev_socks5_proxy_socket (int sfd)
-{
-    static int reuseport = -1;
-    struct addrinfo hints = { 0 };
-    struct sockaddr_in6 saddr;
-    struct addrinfo *result;
-    const char *addr;
-    const char *port;
-    int one = 1;
-    int res;
-    int fd;
-
-    LOG_D ("socks5 proxy socket");
-
-    if (reuseport < 0 && sfd >= 0)
-        return dup (sfd);
-
-    addr = hev_config_get_listen_address ();
-    port = hev_config_get_listen_port ();
-
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-
-    res = hev_task_dns_getaddrinfo (addr, port, &hints, &result);
-    if (res < 0) {
-        LOG_E ("socks5 proxy addr");
-        goto exit;
-    }
-
-    if (result->ai_family == AF_INET) {
-        struct sockaddr_in *adp;
-
-        adp = (struct sockaddr_in *)result->ai_addr;
-        saddr.sin6_family = AF_INET6;
-        saddr.sin6_port = adp->sin_port;
-        memset (&saddr.sin6_addr, 0, 10);
-        saddr.sin6_addr.s6_addr[10] = 0xff;
-        saddr.sin6_addr.s6_addr[11] = 0xff;
-        memcpy (&saddr.sin6_addr.s6_addr[12], &adp->sin_addr, 4);
-    } else if (result->ai_family == AF_INET6) {
-        memcpy (&saddr, result->ai_addr, sizeof (saddr));
-    }
-    freeaddrinfo (result);
-
-    fd = hev_task_io_socket_socket (AF_INET6, SOCK_STREAM, 0);
-    if (fd < 0) {
-        LOG_E ("socks5 proxy socket");
-        goto exit;
-    }
-
-    res = setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof (one));
-    if (res < 0) {
-        LOG_E ("socks5 proxy socket reuse");
-        goto close;
-    }
-
-#ifdef SO_REUSEPORT
-    reuseport = setsockopt (fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof (one));
-#endif
-
-    if (hev_config_get_listen_ipv6_only ()) {
-        res = setsockopt (fd, IPPROTO_IPV6, IPV6_V6ONLY, &one, sizeof (one));
-        if (res < 0) {
-            LOG_E ("socks5 proxy ipv6 only");
-            goto close;
-        }
-    }
-
-    res = bind (fd, (struct sockaddr *)&saddr, sizeof (saddr));
-    if (res < 0) {
-        LOG_E ("socks5 proxy socket bind");
-        goto close;
-    }
-
-    res = listen (fd, 100);
-    if (res < 0) {
-        LOG_E ("socks5 proxy socket listen");
-        goto close;
-    }
-
-    return fd;
-
-close:
-    close (fd);
-exit:
-    return -1;
 }
 
 static void *
@@ -211,9 +130,9 @@ work_thread_handler (void *data)
         goto exit;
     }
 
-    fd = hev_socks5_proxy_socket (listen_fd);
+    fd = hev_socket_factory_get (factory);
     if (fd < 0) {
-        LOG_E ("socks5 proxy worker dup");
+        LOG_E ("socks5 proxy worker socket");
         goto free;
     }
 
@@ -245,7 +164,7 @@ hev_socks5_proxy_task_entry (void *data)
 
     LOG_D ("socks5 proxy task run");
 
-    listen_fd = hev_socks5_proxy_socket (-1);
+    listen_fd = hev_socket_factory_get (factory);
     if (listen_fd < 0)
         return;
 
