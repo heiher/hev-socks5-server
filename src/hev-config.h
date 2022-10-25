@@ -22,6 +22,7 @@ const char *hev_config_get_listen_port (void);
 int hev_config_get_listen_ipv6_only (void);
 
 const char *hev_config_get_bind_address (void);
+const char *hev_config_get_bind_interface (void);
 
 const char *hev_config_get_auth_username (void);
 const char *hev_config_get_auth_password (void);
