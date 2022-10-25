@@ -9,6 +9,7 @@
 
 #include <string.h>
 #include <unistd.h>
+#include <netinet/in.h>
 
 #include <hev-task.h>
 #include <hev-task-io.h>
