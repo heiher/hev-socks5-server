@@ -15,8 +15,8 @@
 #include <hev-task-io.h>
 #include <hev-task-io-socket.h>
 #include <hev-memory-allocator.h>
-#include <hev-task-dns.h>
 
+#include "hev-misc.h"
 #include "hev-logger.h"
 
 #include "hev-socket-factory.h"
@@ -27,41 +27,6 @@ struct _HevSocketFactory
     int ipv6_only;
     int fd;
 };
-
-static int
-hev_socket_factory_resolve (HevSocketFactory *self, const char *addr,
-                            const char *port)
-{
-    struct addrinfo hints = { 0 };
-    struct addrinfo *result;
-    int res;
-
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-
-    res = hev_task_dns_getaddrinfo (addr, port, &hints, &result);
-    if (res < 0)
-        return -1;
-
-    if (result->ai_family == AF_INET) {
-        struct sockaddr_in *adp;
-
-        adp = (struct sockaddr_in *)result->ai_addr;
-        self->addr.sin6_family = AF_INET6;
-        self->addr.sin6_port = adp->sin_port;
-        memset (&self->addr.sin6_addr, 0, 10);
-        self->addr.sin6_addr.s6_addr[10] = 0xff;
-        self->addr.sin6_addr.s6_addr[11] = 0xff;
-        memcpy (&self->addr.sin6_addr.s6_addr[12], &adp->sin_addr, 4);
-    } else if (result->ai_family == AF_INET6) {
-        memcpy (&self->addr, result->ai_addr, sizeof (self->addr));
-    }
-
-    freeaddrinfo (result);
-
-    return 0;
-}
 
 HevSocketFactory *
 hev_socket_factory_new (const char *addr, const char *port, int ipv6_only)
@@ -77,7 +42,7 @@ hev_socket_factory_new (const char *addr, const char *port, int ipv6_only)
         return NULL;
     }
 
-    res = hev_socket_factory_resolve (self, addr, port);
+    res = hev_netaddr_resolve (&self->addr, addr, port);
     if (res < 0) {
         LOG_E ("socket factory resolve");
         hev_free (self);
