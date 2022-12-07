@@ -15,6 +15,7 @@
 
 #include <hev-memory-allocator.h>
 
+#include "hev-misc.h"
 #include "hev-logger.h"
 #include "hev-config.h"
 
@@ -62,12 +63,11 @@ hev_socks5_session_bind (HevSocks5 *self, int fd)
     iface = hev_config_get_bind_interface ();
 
     if (saddr) {
-        struct sockaddr_in6 addr = { 0 };
+        struct sockaddr_in6 addr;
         int res;
 
-        addr.sin6_family = AF_INET6;
-        res = inet_pton (AF_INET6, saddr, &addr.sin6_addr);
-        if (res == 0)
+        res = hev_netaddr_resolve (&addr, saddr, NULL);
+        if (res < 0)
             return -1;
 
         res = bind (fd, (struct sockaddr *)&addr, sizeof (addr));
