@@ -7,7 +7,8 @@ HevSocks5Server is a simple, lightweight socks5 server for Unix.
 **Features**
 * IPv4/IPv6. (dual stack)
 * Standard `CONNECT` command.
-* Extended `UDPFWD` command. (UDP over TCP)
+* Standard `UDP ASSOCIATE` command.
+* Extended `FWD UDP` command. (UDP in TCP)
 * Username/password authentication.
 
 ## How to Build
