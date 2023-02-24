@@ -67,7 +67,7 @@ main:
    # If present, run as a daemon with this pid file
 #  pid-file: /run/hev-socks5-server.pid
    # If present, set rlimit nofile; else use default value
-#  limit-nofile: 1024
+#  limit-nofile: 65535
 ```
 
 ### Run

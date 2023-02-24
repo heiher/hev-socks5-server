@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-main.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2021 hev
+ Copyright   : Copyright (c) 2017 - 2023 hev
  Description : Main
  ============================================================================
  */
@@ -57,17 +57,9 @@ static int
 set_limit_nofile (int limit_nofile)
 {
     struct rlimit limit = {
-        .rlim_cur = RLIM_INFINITY,
-        .rlim_max = RLIM_INFINITY,
+        .rlim_cur = limit_nofile,
+        .rlim_max = limit_nofile,
     };
-
-    if (-1 > limit_nofile)
-        return 0;
-
-    if (0 <= limit_nofile) {
-        limit.rlim_cur = limit_nofile;
-        limit.rlim_max = limit_nofile;
-    }
 
     return setrlimit (RLIMIT_NOFILE, &limit);
 }
@@ -113,10 +105,8 @@ main (int argc, char *argv[])
 
     nofile = hev_config_get_misc_limit_nofile ();
     res = set_limit_nofile (nofile);
-    if (res < 0) {
-        LOG_E ("set limit nofile");
-        return -6;
-    }
+    if (res < 0)
+        LOG_W ("set limit nofile");
 
     pid_file = hev_config_get_misc_pid_file ();
     if (pid_file)

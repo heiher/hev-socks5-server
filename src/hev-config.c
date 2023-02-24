@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-config.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2022 hev
+ Copyright   : Copyright (c) 2017 - 2023 hev
  Description : Config
  ============================================================================
  */
@@ -30,7 +30,7 @@ static int task_stack_size = 8192;
 static int udp_recv_buffer_size = 524288;
 static int connect_timeout = 5000;
 static int read_write_timeout = 60000;
-static int limit_nofile = -2;
+static int limit_nofile = 65535;
 static int log_level = HEV_LOGGER_WARN;
 
 static int
