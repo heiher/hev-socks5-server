@@ -99,6 +99,10 @@ main (int argc, char *argv[])
     if (res < 0)
         return -4;
 
+    pid_file = hev_config_get_misc_pid_file ();
+    if (pid_file)
+        run_as_daemon (pid_file);
+
     res = hev_socks5_proxy_init ();
     if (res < 0)
         return -5;
@@ -107,10 +111,6 @@ main (int argc, char *argv[])
     res = set_limit_nofile (nofile);
     if (res < 0)
         LOG_W ("set limit nofile");
-
-    pid_file = hev_config_get_misc_pid_file ();
-    if (pid_file)
-        run_as_daemon (pid_file);
 
     hev_socks5_proxy_run ();
 
