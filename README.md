@@ -73,7 +73,7 @@ main:
 ### Run
 
 ```bash
-bin/hev-socks5-server conf/main.ini
+bin/hev-socks5-server conf/main.yml
 ```
 
 ## Contributors
