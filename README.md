@@ -83,6 +83,14 @@ main:
 bin/hev-socks5-server conf/main.yml
 ```
 
+### Live updating authentication file
+
+Send signal `SIGUSR1` to socks5 server process after the authentication file is updated.
+
+```bash
+killall -SIGUSR1 hev-socks5-server
+```
+
 ## Contributors
 * **hev** - https://hev.cc
 * **pexcn** - <i@pexcn.me>
