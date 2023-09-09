@@ -9,7 +9,7 @@ HevSocks5Server is a simple, lightweight socks5 server for Unix.
 * Standard `CONNECT` command.
 * Standard `UDP ASSOCIATE` command.
 * Extended `FWD UDP` command. (UDP in TCP)
-* Username/password authentication.
+* Multiple username/password authentication.
 
 ## How to Build
 
@@ -50,6 +50,7 @@ main:
   bind-address: '::'
 
 #auth:
+#  file: conf/auth.txt
 #  username:
 #  password:
 
@@ -68,6 +69,12 @@ main:
 #  pid-file: /run/hev-socks5-server.pid
    # If present, set rlimit nofile; else use default value
 #  limit-nofile: 65535
+```
+
+### Authentication file
+
+```
+<USERNAME> <SPACE> <PASSWORD> <LF>
 ```
 
 ### Run

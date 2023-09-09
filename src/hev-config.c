@@ -22,6 +22,7 @@ static char listen_address[256];
 static char listen_port[8];
 static char bind_address[256];
 static char bind_interface[256];
+static char auth_file[1024];
 static char username[256];
 static char password[256];
 static char log_file[1024];
@@ -108,7 +109,7 @@ static int
 hev_config_parse_auth (yaml_document_t *doc, yaml_node_t *base)
 {
     yaml_node_pair_t *pair;
-    const char *user = NULL, *pass = NULL;
+    const char *user = NULL, *pass = NULL, *file = NULL;
 
     if (!base || YAML_MAPPING_NODE != base->type)
         return -1;
@@ -135,9 +136,13 @@ hev_config_parse_auth (yaml_document_t *doc, yaml_node_t *base)
             user = value;
         else if (0 == strcmp (key, "password"))
             pass = value;
+        else if (0 == strcmp (key, "file"))
+            file = value;
     }
 
-    if (user && pass) {
+    if (file) {
+        strncpy (auth_file, file, 1023);
+    } else if (user && pass) {
         strncpy (username, user, 255);
         strncpy (password, pass, 255);
     }
@@ -324,6 +329,15 @@ hev_config_get_bind_interface (void)
         return NULL;
 
     return bind_interface;
+}
+
+const char *
+hev_config_get_auth_file (void)
+{
+    if ('\0' == auth_file[0])
+        return NULL;
+
+    return auth_file;
 }
 
 const char *

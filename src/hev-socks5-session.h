@@ -12,6 +12,7 @@
 
 #include <hev-task.h>
 #include <hev-socks5-server.h>
+#include <hev-socks5-authenticator.h>
 
 #include "hev-list.h"
 

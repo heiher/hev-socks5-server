@@ -104,8 +104,6 @@ hev_socks5_session_construct (HevSocks5Session *self, int fd)
 {
     int read_write_timeout;
     int connect_timeout;
-    const char *user;
-    const char *pass;
     int res;
 
     res = hev_socks5_server_construct (&self->base, fd);
@@ -115,11 +113,6 @@ hev_socks5_session_construct (HevSocks5Session *self, int fd)
     LOG_D ("%p socks5 session construct", self);
 
     HEV_OBJECT (self)->klass = HEV_SOCKS5_SESSION_TYPE;
-
-    user = hev_config_get_auth_username ();
-    pass = hev_config_get_auth_password ();
-    if (user && pass)
-        hev_socks5_set_auth_user_pass (HEV_SOCKS5 (&self->base), user, pass);
 
     connect_timeout = hev_config_get_misc_connect_timeout ();
     read_write_timeout = hev_config_get_misc_read_write_timeout ();

@@ -7,6 +7,8 @@
  ============================================================================
  */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include <hev-task.h>
@@ -15,6 +17,7 @@
 #include <hev-task-io-socket.h>
 #include <hev-task-dns.h>
 #include <hev-memory-allocator.h>
+#include <hev-socks5-authenticator.h>
 
 #include "hev-config.h"
 #include "hev-logger.h"
@@ -32,10 +35,12 @@ struct _HevSocks5Worker
     HevTask *task_event;
     HevTask *task_worker;
     HevList session_set;
+    HevSocks5Authenticator *auth;
 };
 
 static void hev_socks5_event_task_entry (void *data);
 static void hev_socks5_worker_task_entry (void *data);
+static void hev_socks5_worker_load (HevSocks5Worker *self);
 
 HevSocks5Worker *
 hev_socks5_worker_new (int fd)
@@ -51,6 +56,8 @@ hev_socks5_worker_new (int fd)
     self->fd = fd;
     self->event_fds[0] = -1;
     self->event_fds[1] = -1;
+
+    hev_socks5_worker_load (self);
 
     self->task_worker = hev_task_new (-1);
     if (!self->task_worker) {
@@ -75,6 +82,9 @@ hev_socks5_worker_destroy (HevSocks5Worker *self)
 {
     LOG_D ("%p works worker destroy", self);
 
+    if (self->auth)
+        hev_object_unref (HEV_OBJECT (self->auth));
+
     hev_free (self);
 }
 
@@ -90,9 +100,24 @@ hev_socks5_worker_start (HevSocks5Worker *self)
 void
 hev_socks5_worker_stop (HevSocks5Worker *self)
 {
-    int val;
+    char val = 's';
 
     LOG_D ("%p works worker stop", self);
+
+    if (self->event_fds[1] < 0)
+        return;
+
+    val = write (self->event_fds[1], &val, sizeof (val));
+    if (val < 0)
+        LOG_E ("socks5 proxy write event");
+}
+
+void
+hev_socks5_worker_reload (HevSocks5Worker *self)
+{
+    char val = 'r';
+
+    LOG_D ("%p works worker reload", self);
 
     if (self->event_fds[1] < 0)
         return;
@@ -163,6 +188,9 @@ hev_socks5_worker_task_entry (void *data)
             continue;
         }
 
+        if (self->auth)
+            hev_socks5_server_set_auth (HEV_SOCKS5_SERVER (s), self->auth);
+
         s->task = task;
         s->data = self;
         hev_list_add_tail (&self->session_set, &s->node);
@@ -193,11 +221,77 @@ hev_socks5_event_task_entry (void *data)
     }
 
     hev_task_add_fd (hev_task_self (), self->event_fds[0], POLLIN);
-    hev_task_io_read (self->event_fds[0], &res, sizeof (res), NULL, NULL);
+
+    for (;;) {
+        char val;
+
+        res = hev_task_io_read (self->event_fds[0], &val, sizeof (val), NULL,
+                                NULL);
+        if (res < sizeof (val))
+            continue;
+
+        if (val == 'r')
+            hev_socks5_worker_load (self);
+        else
+            break;
+    }
 
     self->quit = 1;
     hev_task_wakeup (self->task_worker);
 
     close (self->event_fds[0]);
     close (self->event_fds[1]);
+}
+
+static void
+hev_socks5_worker_load (HevSocks5Worker *self)
+{
+    const char *file, *user, *pass;
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
+    FILE *fp;
+
+    LOG_D ("%p works worker load", self);
+
+    file = hev_config_get_auth_file ();
+    user = hev_config_get_auth_username ();
+    pass = hev_config_get_auth_password ();
+
+    if (!file && !user && !pass)
+        return;
+
+    if (self->auth)
+        hev_socks5_authenticator_clear (self->auth);
+
+    self->auth = hev_socks5_authenticator_new ();
+    if (!self->auth)
+        return;
+
+    if (!file) {
+        hev_socks5_authenticator_add (self->auth, user, pass);
+        return;
+    }
+
+    fp = fopen (file, "r");
+    if (!fp)
+        return;
+
+    while ((nread = getline (&line, &len, fp)) != -1) {
+        char user[256], pass[256];
+        int res;
+
+        res = sscanf (line, "%255s %255s\n", user, pass);
+        if (res != 2) {
+            LOG_E ("%p works worker user/pass format", self);
+            continue;
+        }
+
+        res = hev_socks5_authenticator_add (self->auth, user, pass);
+        if (res < 0)
+            LOG_E ("%p works worker user conflict", self);
+    }
+
+    free (line);
+    fclose (fp);
 }

@@ -15,6 +15,7 @@ main:
   bind-interface: ''
 
 #auth:
+#  file: conf/auth.txt
 #  username:
 #  password:
 

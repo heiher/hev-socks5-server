@@ -43,7 +43,10 @@ sigint_handler (int signum)
         if (!worker)
             continue;
 
-        hev_socks5_worker_stop (worker);
+        if (signum == SIGUSR1)
+            hev_socks5_worker_reload (worker);
+        else
+            hev_socks5_worker_stop (worker);
     }
 }
 
@@ -64,6 +67,11 @@ hev_socks5_proxy_init (void)
 
     if (signal (SIGINT, sigint_handler) == SIG_ERR) {
         LOG_E ("socks5 proxy sigint");
+        goto free;
+    }
+
+    if (signal (SIGUSR1, sigint_handler) == SIG_ERR) {
+        LOG_E ("socks5 proxy sigusr1");
         goto free;
     }
 
