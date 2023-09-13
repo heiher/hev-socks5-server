@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include <hev-task.h>
@@ -246,7 +247,7 @@ hev_socks5_event_task_entry (void *data)
 static void
 hev_socks5_worker_load (HevSocks5Worker *self)
 {
-    const char *file, *user, *pass;
+    const char *file, *name, *pass;
     char *line = NULL;
     size_t len = 0;
     ssize_t nread;
@@ -255,10 +256,10 @@ hev_socks5_worker_load (HevSocks5Worker *self)
     LOG_D ("%p works worker load", self);
 
     file = hev_config_get_auth_file ();
-    user = hev_config_get_auth_username ();
+    name = hev_config_get_auth_username ();
     pass = hev_config_get_auth_password ();
 
-    if (!file && !user && !pass)
+    if (!file && !name && !pass)
         return;
 
     if (self->auth)
@@ -269,7 +270,10 @@ hev_socks5_worker_load (HevSocks5Worker *self)
         return;
 
     if (!file) {
-        hev_socks5_authenticator_add (self->auth, user, pass);
+        HevSocks5User *user;
+
+        user = hev_socks5_user_new (name, strlen (name), pass, strlen (pass));
+        hev_socks5_authenticator_add (self->auth, user);
         return;
     }
 
@@ -278,16 +282,23 @@ hev_socks5_worker_load (HevSocks5Worker *self)
         return;
 
     while ((nread = getline (&line, &len, fp)) != -1) {
-        char user[256], pass[256];
+        HevSocks5User *user;
+        unsigned int nlen;
+        unsigned int plen;
+        char name[256];
+        char pass[256];
         int res;
 
-        res = sscanf (line, "%255s %255s\n", user, pass);
+        res = sscanf (line, "%255s %255s\n", name, pass);
         if (res != 2) {
             LOG_E ("%p works worker user/pass format", self);
             continue;
         }
 
-        res = hev_socks5_authenticator_add (self->auth, user, pass);
+        nlen = strlen (name);
+        plen = strlen (pass);
+        user = hev_socks5_user_new (name, nlen, pass, plen);
+        res = hev_socks5_authenticator_add (self->auth, user);
         if (res < 0)
             LOG_E ("%p works worker user conflict", self);
     }

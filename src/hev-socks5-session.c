@@ -52,7 +52,7 @@ hev_socks5_session_terminate (HevSocks5Session *self)
 }
 
 static int
-hev_socks5_session_bind (HevSocks5 *self, int fd)
+hev_socks5_session_bind (HevSocks5 *self, int fd, const struct sockaddr *dest)
 {
     const char *saddr;
     const char *iface;
