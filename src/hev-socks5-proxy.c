@@ -297,8 +297,10 @@ hev_socks5_proxy_load (void)
             user = hev_socks5_user_new (name, nlen, pass, plen);
             hev_object_set_atomic (HEV_OBJECT (user), 1);
             res = hev_socks5_authenticator_add (auth, user);
-            if (res < 0)
+            if (res < 0) {
                 LOG_E ("socks5 proxy user conflict");
+                hev_object_unref (HEV_OBJECT (user));
+            }
         }
 
         free (line);
