@@ -11,7 +11,7 @@
 #define __HEV_CONFIG_CONST_H__
 
 #define MAJOR_VERSION (2)
-#define MINOR_VERSION (5)
-#define MICRO_VERSION (1)
+#define MINOR_VERSION (6)
+#define MICRO_VERSION (0)
 
 #endif /* __HEV_CONFIG_CONST_H__ */
