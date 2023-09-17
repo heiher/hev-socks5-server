@@ -18,6 +18,7 @@
 #include "hev-misc.h"
 #include "hev-logger.h"
 #include "hev-config.h"
+#include "hev-socks5-user-mark.h"
 
 #include "hev-socks5-session.h"
 
@@ -54,6 +55,7 @@ hev_socks5_session_terminate (HevSocks5Session *self)
 static int
 hev_socks5_session_bind (HevSocks5 *self, int fd, const struct sockaddr *dest)
 {
+    HevSocks5Server *srv = HEV_SOCKS5_SERVER (self);
     const char *saddr;
     const char *iface;
 
@@ -95,6 +97,22 @@ hev_socks5_session_bind (HevSocks5 *self, int fd, const struct sockaddr *dest)
         if (res < 0)
             return -1;
     }
+
+#if defined(__linux__)
+    if (srv->user) {
+        HevSocks5UserMark *user = HEV_SOCKS5_USER_MARK (srv->user);
+
+        if (user->mark) {
+            int mark;
+            int res;
+
+            mark = user->mark;
+            res = setsockopt (fd, SOL_SOCKET, SO_MARK, &mark, sizeof (mark));
+            if (res < 0)
+                return -1;
+        }
+    }
+#endif
 
     return 0;
 }

@@ -74,7 +74,7 @@ main:
 ### Authentication file
 
 ```
-<USERNAME> <SPACE> <PASSWORD> <LF>
+<USERNAME> <SPACE> <PASSWORD> <SPACE> <MARK> <LF>
 ```
 
 ### Run

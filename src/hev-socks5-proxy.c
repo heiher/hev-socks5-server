@@ -23,6 +23,7 @@
 #include "hev-logger.h"
 #include "hev-socks5-worker.h"
 #include "hev-socket-factory.h"
+#include "hev-socks5-user-mark.h"
 
 #include "hev-socks5-proxy.h"
 
@@ -261,10 +262,11 @@ hev_socks5_proxy_load (void)
     hev_object_set_atomic (HEV_OBJECT (auth), 1);
 
     if (!file) {
-        HevSocks5User *user;
+        HevSocks5UserMark *user;
 
-        user = hev_socks5_user_new (name, strlen (name), pass, strlen (pass));
-        hev_socks5_authenticator_add (auth, user);
+        user = hev_socks5_user_mark_new (name, strlen (name), pass,
+                                         strlen (pass), 0);
+        hev_socks5_authenticator_add (auth, HEV_SOCKS5_USER (user));
         hev_object_set_atomic (HEV_OBJECT (user), 1);
     } else {
         char *line = NULL;
@@ -279,24 +281,25 @@ hev_socks5_proxy_load (void)
         }
 
         while ((nread = getline (&line, &len, fp)) != -1) {
-            HevSocks5User *user;
+            HevSocks5UserMark *user;
             unsigned int nlen;
             unsigned int plen;
             char name[256];
             char pass[256];
+            long mark = 0;
             int res;
 
-            res = sscanf (line, "%255s %255s\n", name, pass);
-            if (res != 2) {
+            res = sscanf (line, "%255s %255s %lx\n", name, pass, &mark);
+            if (res < 2) {
                 LOG_E ("socks5 proxy user/pass format");
                 continue;
             }
 
             nlen = strlen (name);
             plen = strlen (pass);
-            user = hev_socks5_user_new (name, nlen, pass, plen);
+            user = hev_socks5_user_mark_new (name, nlen, pass, plen, mark);
             hev_object_set_atomic (HEV_OBJECT (user), 1);
-            res = hev_socks5_authenticator_add (auth, user);
+            res = hev_socks5_authenticator_add (auth, HEV_SOCKS5_USER (user));
             if (res < 0) {
                 LOG_E ("socks5 proxy user conflict");
                 hev_object_unref (HEV_OBJECT (user));
