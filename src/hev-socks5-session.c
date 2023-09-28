@@ -122,6 +122,7 @@ hev_socks5_session_construct (HevSocks5Session *self, int fd)
 {
     int read_write_timeout;
     int connect_timeout;
+    int addr_type;
     int res;
 
     res = hev_socks5_server_construct (&self->base, fd);
@@ -132,9 +133,11 @@ hev_socks5_session_construct (HevSocks5Session *self, int fd)
 
     HEV_OBJECT (self)->klass = HEV_SOCKS5_SESSION_TYPE;
 
+    addr_type = hev_config_get_domain_address_type ();
     connect_timeout = hev_config_get_misc_connect_timeout ();
     read_write_timeout = hev_config_get_misc_read_write_timeout ();
 
+    hev_socks5_set_domain_addr_type (HEV_SOCKS5 (self), addr_type);
     hev_socks5_set_timeout (HEV_SOCKS5 (self), read_write_timeout);
     hev_socks5_server_set_connect_timeout (&self->base, connect_timeout);
 

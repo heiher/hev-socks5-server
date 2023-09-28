@@ -48,6 +48,8 @@ main:
   listen-ipv6-only: false
   # Bind source address (ipv4|ipv6)
   bind-address: '::'
+  # Domain address type (ipv4|ipv6|unspec)
+  domain-address-type: unspec
 
 #auth:
 #  file: conf/auth.txt

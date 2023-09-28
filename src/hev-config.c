@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 
 #include <yaml.h>
+#include <hev-socks5.h>
 #include <hev-socks5-proto.h>
 
 #include "hev-logger.h"
@@ -33,6 +34,7 @@ static int connect_timeout = 5000;
 static int read_write_timeout = 60000;
 static int limit_nofile = 65535;
 static int log_level = HEV_LOGGER_WARN;
+static int domain_addr_type = HEV_SOCKS5_DOMAIN_ADDR_TYPE_UNSPEC;
 
 static int
 hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
@@ -42,6 +44,7 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
     const char *port = NULL;
     const char *bind_saddr = NULL;
     const char *bind_iface = NULL;
+    const char *addr_type = NULL;
 
     if (!base || YAML_MAPPING_NODE != base->type)
         return -1;
@@ -76,6 +79,8 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
             bind_saddr = value;
         else if (0 == strcmp (key, "bind-interface"))
             bind_iface = value;
+        else if (0 == strcmp (key, "domain-address-type"))
+            addr_type = value;
     }
 
     if (!workers) {
@@ -101,6 +106,13 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
 
     if (bind_iface)
         strncpy (bind_interface, bind_iface, 256 - 1);
+
+    if (addr_type) {
+        if (0 == strcmp (addr_type, "ipv4"))
+            domain_addr_type = HEV_SOCKS5_DOMAIN_ADDR_TYPE_IPV4;
+        else if (0 == strcmp (addr_type, "ipv6"))
+            domain_addr_type = HEV_SOCKS5_DOMAIN_ADDR_TYPE_IPV6;
+    }
 
     return 0;
 }
@@ -329,6 +341,12 @@ hev_config_get_bind_interface (void)
         return NULL;
 
     return bind_interface;
+}
+
+int
+hev_config_get_domain_address_type (void)
+{
+    return domain_addr_type;
 }
 
 const char *
