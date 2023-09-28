@@ -141,15 +141,19 @@ hev_socks5_worker_reload (HevSocks5Worker *self)
 void
 hev_socks5_worker_set_auth (HevSocks5Worker *self, HevSocks5Authenticator *auth)
 {
-    HevSocks5Authenticator **ptr;
-    HevSocks5Authenticator *prev;
+    atomic_intptr_t *ptr;
+    intptr_t prev;
 
     LOG_D ("%p works worker set auth", self);
 
     hev_object_ref (HEV_OBJECT (auth));
-    ptr = self->auth_curr ? &self->auth_next : &self->auth_curr;
 
-    prev = atomic_exchange (ptr, auth);
+    if (self->auth_curr)
+        ptr = (atomic_intptr_t *)&self->auth_next;
+    else
+        ptr = (atomic_intptr_t *)&self->auth_curr;
+
+    prev = atomic_exchange (ptr, (intptr_t)auth);
     if (prev)
         hev_object_unref (HEV_OBJECT (prev));
 }
@@ -273,16 +277,18 @@ hev_socks5_event_task_entry (void *data)
 static void
 hev_socks5_worker_load (HevSocks5Worker *self)
 {
-    HevSocks5Authenticator *a;
+    atomic_intptr_t *ptr;
+    intptr_t prev;
 
     LOG_D ("%p works worker load", self);
 
-    a = atomic_exchange_explicit (&self->auth_next, NULL, memory_order_relaxed);
-    if (!a)
+    ptr = (atomic_intptr_t *)&self->auth_next;
+    prev = atomic_exchange_explicit (ptr, 0, memory_order_relaxed);
+    if (!prev)
         return;
 
     if (self->auth_curr)
         hev_object_unref (HEV_OBJECT (self->auth_curr));
 
-    self->auth_curr = a;
+    self->auth_curr = HEV_SOCKS5_AUTHENTICATOR (prev);
 }
