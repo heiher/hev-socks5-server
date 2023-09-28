@@ -55,7 +55,6 @@ hev_socks5_session_terminate (HevSocks5Session *self)
 static int
 hev_socks5_session_bind (HevSocks5 *self, int fd, const struct sockaddr *dest)
 {
-    HevSocks5Server *srv = HEV_SOCKS5_SERVER (self);
     const char *saddr;
     const char *iface;
 
@@ -99,6 +98,8 @@ hev_socks5_session_bind (HevSocks5 *self, int fd, const struct sockaddr *dest)
     }
 
 #if defined(__linux__)
+    HevSocks5Server *srv = HEV_SOCKS5_SERVER (self);
+
     if (srv->user) {
         HevSocks5UserMark *user = HEV_SOCKS5_USER_MARK (srv->user);
 
