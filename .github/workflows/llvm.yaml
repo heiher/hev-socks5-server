@@ -1,0 +1,30 @@
+name: LLVM Build Test
+
+on:
+  # Trigger the workflow on push or pull requests.
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v3
+      with:
+          fetch-depth: 1
+          submodules: true
+    - name: Install Compilers
+      run: |
+        sudo apt-get purge -qq --auto-remove llvm python3-lldb-14 llvm-14 -y;
+        wget https://apt.llvm.org/llvm.sh -O /tmp/llvm.sh;
+        sudo bash /tmp/llvm.sh 18;
+        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-18 400;
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 400;
+    - name: Build Linux
+      run: |
+        make CC=clang ENABLE_STATIC=1 -j
