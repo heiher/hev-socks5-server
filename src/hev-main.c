@@ -2,20 +2,18 @@
  ============================================================================
  Name        : hev-main.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2023 hev
+ Copyright   : Copyright (c) 2017 - 2024 hev
  Description : Main
  ============================================================================
  */
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/resource.h>
 
 #include <hev-task.h>
 #include <hev-socks5-misc.h>
 #include <hev-socks5-logger.h>
 
+#include "hev-misc.h"
 #include "hev-config.h"
 #include "hev-config-const.h"
 #include "hev-logger.h"
@@ -29,39 +27,6 @@ show_help (const char *self_path)
     printf ("%s CONFIG_PATH\n", self_path);
     printf ("Version: %u.%u.%u %s\n", MAJOR_VERSION, MINOR_VERSION,
             MICRO_VERSION, COMMIT_ID);
-}
-
-static void
-run_as_daemon (const char *pid_file)
-{
-    FILE *fp;
-
-    fp = fopen (pid_file, "w+");
-    if (!fp) {
-        LOG_E ("open pid file %s", pid_file);
-        return;
-    }
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    if (daemon (0, 0)) {
-        /* ignore return value */
-    }
-#pragma GCC diagnostic pop
-
-    fprintf (fp, "%u\n", getpid ());
-    fclose (fp);
-}
-
-static int
-set_limit_nofile (int limit_nofile)
-{
-    struct rlimit limit = {
-        .rlim_cur = limit_nofile,
-        .rlim_max = limit_nofile,
-    };
-
-    return setrlimit (RLIMIT_NOFILE, &limit);
 }
 
 int

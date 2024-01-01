@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-socks5-proxy.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2022 hev
+ Copyright   : Copyright (c) 2017 - 2024 hev
  Description : Socks5 Proxy
  ============================================================================
  */
@@ -35,7 +35,93 @@ static pthread_t *work_threads;
 static HevSocketFactory *factory;
 static HevSocks5Worker **worker_list;
 
-static void hev_socks5_proxy_load (void);
+static void
+hev_socks5_proxy_load_file (HevSocks5Authenticator *auth, const char *file)
+{
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
+    FILE *fp;
+
+    fp = fopen (file, "r");
+    if (!fp) {
+        hev_object_unref (HEV_OBJECT (auth));
+        return;
+    }
+
+    while ((nread = getline (&line, &len, fp)) != -1) {
+        HevSocks5UserMark *user;
+        unsigned int nlen;
+        unsigned int plen;
+        char name[256];
+        char pass[256];
+        long mark = 0;
+        int res;
+
+        res = sscanf (line, "%255s %255s %lx\n", name, pass, &mark);
+        if (res < 2) {
+            LOG_E ("socks5 proxy user/pass format");
+            continue;
+        }
+
+        nlen = strlen (name);
+        plen = strlen (pass);
+        user = hev_socks5_user_mark_new (name, nlen, pass, plen, mark);
+        hev_object_set_atomic (HEV_OBJECT (user), 1);
+        res = hev_socks5_authenticator_add (auth, HEV_SOCKS5_USER (user));
+        if (res < 0) {
+            LOG_E ("socks5 proxy user conflict");
+            hev_object_unref (HEV_OBJECT (user));
+        }
+    }
+
+    free (line);
+    fclose (fp);
+}
+
+static void
+hev_socks5_proxy_load (void)
+{
+    HevSocks5Authenticator *auth;
+    const char *file, *name, *pass;
+    int i;
+
+    LOG_D ("socks5 proxy load");
+
+    file = hev_config_get_auth_file ();
+    name = hev_config_get_auth_username ();
+    pass = hev_config_get_auth_password ();
+
+    if (!file && !name && !pass)
+        return;
+
+    auth = hev_socks5_authenticator_new ();
+    if (!auth)
+        return;
+
+    hev_object_set_atomic (HEV_OBJECT (auth), 1);
+
+    if (file) {
+        hev_socks5_proxy_load_file (auth, file);
+    } else {
+        HevSocks5UserMark *user;
+
+        user = hev_socks5_user_mark_new (name, strlen (name), pass,
+                                         strlen (pass), 0);
+        hev_socks5_authenticator_add (auth, HEV_SOCKS5_USER (user));
+        hev_object_set_atomic (HEV_OBJECT (user), 1);
+    }
+
+    for (i = 0; i < workers; i++) {
+        HevSocks5Worker *worker;
+
+        worker = worker_list[i];
+        hev_socks5_worker_set_auth (worker, auth);
+        hev_socks5_worker_reload (worker);
+    }
+
+    hev_object_unref (HEV_OBJECT (auth));
+}
 
 static void
 sigint_handler (int signum)
@@ -68,39 +154,23 @@ hev_socks5_proxy_init (void)
         goto exit;
     }
 
-    if (signal (SIGPIPE, SIG_IGN) == SIG_ERR) {
-        LOG_E ("socks5 proxy sigpipe");
-        goto free;
-    }
-
-    if (signal (SIGINT, sigint_handler) == SIG_ERR) {
-        LOG_E ("socks5 proxy sigint");
-        goto free;
-    }
-
-    if (signal (SIGUSR1, sigint_handler) == SIG_ERR) {
-        LOG_E ("socks5 proxy sigusr1");
-        goto free;
-    }
-
     task = hev_task_new (-1);
     if (!task) {
         LOG_E ("socks5 proxy task");
-        goto free;
+        goto exit;
     }
 
     workers = hev_config_get_workers ();
-
     work_threads = hev_malloc0 (sizeof (pthread_t) * workers);
     if (!work_threads) {
         LOG_E ("socks5 proxy work threads");
-        goto free;
+        goto exit;
     }
 
     worker_list = hev_malloc0 (sizeof (HevSocks5Worker *) * workers);
     if (!worker_list) {
         LOG_E ("socks5 proxy worker list");
-        goto free;
+        goto exit;
     }
 
     factory = hev_socket_factory_new (hev_config_get_listen_address (),
@@ -108,14 +178,17 @@ hev_socks5_proxy_init (void)
                                       hev_config_get_listen_ipv6_only ());
     if (!factory) {
         LOG_E ("socks5 proxy socket factory");
-        goto free;
+        goto exit;
     }
+
+    signal (SIGPIPE, SIG_IGN);
+    signal (SIGINT, sigint_handler);
+    signal (SIGUSR1, sigint_handler);
 
     return 0;
 
-free:
-    hev_socks5_proxy_fini ();
 exit:
+    hev_socks5_proxy_fini ();
     return -1;
 }
 
@@ -237,86 +310,4 @@ hev_socks5_proxy_run (void)
         hev_socks5_worker_destroy (worker_list[0]);
         worker_list[0] = NULL;
     }
-}
-
-static void
-hev_socks5_proxy_load (void)
-{
-    HevSocks5Authenticator *auth;
-    const char *file, *name, *pass;
-    int i;
-
-    LOG_D ("socks5 proxy load");
-
-    file = hev_config_get_auth_file ();
-    name = hev_config_get_auth_username ();
-    pass = hev_config_get_auth_password ();
-
-    if (!file && !name && !pass)
-        return;
-
-    auth = hev_socks5_authenticator_new ();
-    if (!auth)
-        return;
-
-    hev_object_set_atomic (HEV_OBJECT (auth), 1);
-
-    if (!file) {
-        HevSocks5UserMark *user;
-
-        user = hev_socks5_user_mark_new (name, strlen (name), pass,
-                                         strlen (pass), 0);
-        hev_socks5_authenticator_add (auth, HEV_SOCKS5_USER (user));
-        hev_object_set_atomic (HEV_OBJECT (user), 1);
-    } else {
-        char *line = NULL;
-        size_t len = 0;
-        ssize_t nread;
-        FILE *fp;
-
-        fp = fopen (file, "r");
-        if (!fp) {
-            hev_object_unref (HEV_OBJECT (auth));
-            return;
-        }
-
-        while ((nread = getline (&line, &len, fp)) != -1) {
-            HevSocks5UserMark *user;
-            unsigned int nlen;
-            unsigned int plen;
-            char name[256];
-            char pass[256];
-            long mark = 0;
-            int res;
-
-            res = sscanf (line, "%255s %255s %lx\n", name, pass, &mark);
-            if (res < 2) {
-                LOG_E ("socks5 proxy user/pass format");
-                continue;
-            }
-
-            nlen = strlen (name);
-            plen = strlen (pass);
-            user = hev_socks5_user_mark_new (name, nlen, pass, plen, mark);
-            hev_object_set_atomic (HEV_OBJECT (user), 1);
-            res = hev_socks5_authenticator_add (auth, HEV_SOCKS5_USER (user));
-            if (res < 0) {
-                LOG_E ("socks5 proxy user conflict");
-                hev_object_unref (HEV_OBJECT (user));
-            }
-        }
-
-        free (line);
-        fclose (fp);
-    }
-
-    for (i = 0; i < workers; i++) {
-        HevSocks5Worker *worker;
-
-        worker = worker_list[i];
-        hev_socks5_worker_set_auth (worker, auth);
-        hev_socks5_worker_reload (worker);
-    }
-
-    hev_object_unref (HEV_OBJECT (auth));
 }

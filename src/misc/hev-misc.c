@@ -2,15 +2,20 @@
  ============================================================================
  Name        : hev-misc.c
  Authors     : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2022 everyone.
+ Copyright   : Copyright (c) 2022 - 2024 everyone.
  Description : Misc
  ============================================================================
  */
 
+#include <stdio.h>
 #include <string.h>
-#include <netinet/in.h>
+#include <unistd.h>
+#include <net/if.h>
+#include <sys/resource.h>
 
 #include <hev-task-dns.h>
+
+#include "hev-logger.h"
 
 #include "hev-misc.h"
 
@@ -46,5 +51,73 @@ hev_netaddr_resolve (struct sockaddr_in6 *daddr, const char *addr,
 
     freeaddrinfo (result);
 
+    return 0;
+}
+
+void
+run_as_daemon (const char *pid_file)
+{
+    FILE *fp;
+
+    fp = fopen (pid_file, "w+");
+    if (!fp) {
+        LOG_E ("open pid file %s", pid_file);
+        return;
+    }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    if (daemon (0, 0)) {
+        /* ignore return value */
+    }
+#pragma GCC diagnostic pop
+
+    fprintf (fp, "%u\n", getpid ());
+    fclose (fp);
+}
+
+int
+set_limit_nofile (int limit_nofile)
+{
+    struct rlimit limit = {
+        .rlim_cur = limit_nofile,
+        .rlim_max = limit_nofile,
+    };
+
+    return setrlimit (RLIMIT_NOFILE, &limit);
+}
+
+int
+set_sock_bind (int fd, const char *iface)
+{
+    int res = 0;
+
+#if defined(__linux__)
+    struct ifreq ifr = { 0 };
+
+    strncpy (ifr.ifr_name, iface, sizeof (ifr.ifr_name) - 1);
+    res = setsockopt (fd, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof (ifr));
+#elif defined(__APPLE__) || defined(__MACH__)
+    int i;
+
+    i = if_nametoindex (iface);
+    if (i == 0) {
+        return -1;
+    }
+
+    res = setsockopt (fd, IPPROTO_IPV6, IPV6_BOUND_IF, &i, sizeof (i));
+#endif
+
+    return res;
+}
+
+int
+set_sock_mark (int fd, unsigned int mark)
+{
+#if defined(__linux__)
+    return setsockopt (fd, SOL_SOCKET, SO_MARK, &mark, sizeof (mark));
+#elif defined(__FreeBSD__)
+    return setsockopt (fd, SOL_SOCKET, SO_USER_COOKIE, &mark, sizeof (mark));
+#endif
     return 0;
 }

@@ -2,16 +2,12 @@
  ============================================================================
  Name        : hev-socks5-session.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2021 hev
+ Copyright   : Copyright (c) 2017 - 2024 hev
  Description : Socks5 Session
  ============================================================================
  */
 
 #include <string.h>
-#include <net/if.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 
 #include <hev-memory-allocator.h>
 
@@ -55,8 +51,10 @@ hev_socks5_session_terminate (HevSocks5Session *self)
 static int
 hev_socks5_session_bind (HevSocks5 *self, int fd, const struct sockaddr *dest)
 {
+    HevSocks5Server *srv = HEV_SOCKS5_SERVER (self);
     const char *saddr;
     const char *iface;
+    int res;
 
     LOG_D ("%p socks5 session bind", self);
 
@@ -65,7 +63,6 @@ hev_socks5_session_bind (HevSocks5 *self, int fd, const struct sockaddr *dest)
 
     if (saddr) {
         struct sockaddr_in6 addr;
-        int res;
 
         res = hev_netaddr_resolve (&addr, saddr, NULL);
         if (res < 0)
@@ -77,43 +74,20 @@ hev_socks5_session_bind (HevSocks5 *self, int fd, const struct sockaddr *dest)
     }
 
     if (iface) {
-        int res = 0;
-#if defined(__linux__)
-        struct ifreq ifr = { 0 };
-
-        strncpy (ifr.ifr_name, iface, sizeof (ifr.ifr_name) - 1);
-        res = setsockopt (fd, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof (ifr));
-#elif defined(__APPLE__) || defined(__MACH__)
-        int i;
-
-        i = if_nametoindex (iface);
-        if (i == 0) {
-            return -1;
-        }
-
-        res = setsockopt (fd, IPPROTO_IPV6, IPV6_BOUND_IF, &i, sizeof (i));
-#endif
+        res = set_sock_bind (fd, iface);
         if (res < 0)
             return -1;
     }
-
-#if defined(__linux__)
-    HevSocks5Server *srv = HEV_SOCKS5_SERVER (self);
 
     if (srv->user) {
         HevSocks5UserMark *user = HEV_SOCKS5_USER_MARK (srv->user);
 
         if (user->mark) {
-            int mark;
-            int res;
-
-            mark = user->mark;
-            res = setsockopt (fd, SOL_SOCKET, SO_MARK, &mark, sizeof (mark));
+            res = set_sock_mark (fd, user->mark);
             if (res < 0)
                 return -1;
         }
     }
-#endif
 
     return 0;
 }

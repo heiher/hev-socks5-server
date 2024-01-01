@@ -2,7 +2,7 @@
  ============================================================================
  Name        : hev-socks5-worker.c
  Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2021 hev
+ Copyright   : Copyright (c) 2017 - 2024 hev
  Description : Socks5 Worker
  ============================================================================
  */
@@ -15,7 +15,6 @@
 #include <hev-task-io.h>
 #include <hev-task-io-pipe.h>
 #include <hev-task-io-socket.h>
-#include <hev-task-dns.h>
 #include <hev-memory-allocator.h>
 
 #include "hev-config.h"
@@ -38,9 +37,140 @@ struct _HevSocks5Worker
     HevSocks5Authenticator *auth_next;
 };
 
-static void hev_socks5_event_task_entry (void *data);
-static void hev_socks5_worker_task_entry (void *data);
-static void hev_socks5_worker_load (HevSocks5Worker *self);
+static int
+task_io_yielder (HevTaskYieldType type, void *data)
+{
+    HevSocks5Worker *self = data;
+
+    hev_task_yield (type);
+
+    return self->quit ? -1 : 0;
+}
+
+static void
+hev_socks5_worker_load (HevSocks5Worker *self)
+{
+    atomic_intptr_t *ptr;
+    intptr_t prev;
+
+    LOG_D ("%p works worker load", self);
+
+    ptr = (atomic_intptr_t *)&self->auth_next;
+    prev = atomic_exchange_explicit (ptr, 0, memory_order_relaxed);
+    if (!prev)
+        return;
+
+    if (self->auth_curr)
+        hev_object_unref (HEV_OBJECT (self->auth_curr));
+
+    self->auth_curr = HEV_SOCKS5_AUTHENTICATOR (prev);
+}
+
+static void
+hev_socks5_session_task_entry (void *data)
+{
+    HevSocks5Session *s = data;
+    HevSocks5Worker *self = s->data;
+
+    hev_socks5_server_run (HEV_SOCKS5_SERVER (s));
+
+    hev_list_del (&self->session_set, &s->node);
+    hev_object_unref (HEV_OBJECT (s));
+}
+
+static void
+hev_socks5_worker_task_entry (void *data)
+{
+    HevSocks5Worker *self = data;
+    HevListNode *node;
+    int stack_size;
+    int fd;
+
+    LOG_D ("socks5 worker task run");
+
+    fd = self->fd;
+    hev_task_add_fd (hev_task_self (), fd, POLLIN);
+    stack_size = hev_config_get_misc_task_stack_size ();
+
+    for (;;) {
+        HevSocks5Session *s;
+        HevTask *task;
+        int nfd;
+
+        nfd = hev_task_io_socket_accept (fd, NULL, NULL, task_io_yielder, self);
+        if (nfd == -1) {
+            LOG_E ("socks5 proxy accept");
+            continue;
+        } else if (nfd < 0) {
+            break;
+        }
+
+        s = hev_socks5_session_new (nfd);
+        if (!s) {
+            close (nfd);
+            continue;
+        }
+
+        task = hev_task_new (stack_size);
+        if (!task) {
+            hev_object_unref (HEV_OBJECT (s));
+            continue;
+        }
+
+        if (self->auth_curr)
+            hev_socks5_server_set_auth (HEV_SOCKS5_SERVER (s), self->auth_curr);
+
+        s->task = task;
+        s->data = self;
+        hev_list_add_tail (&self->session_set, &s->node);
+        hev_task_run (task, hev_socks5_session_task_entry, s);
+    }
+
+    node = hev_list_first (&self->session_set);
+    for (; node; node = hev_list_node_next (node)) {
+        HevSocks5Session *s;
+
+        s = container_of (node, HevSocks5Session, node);
+        hev_socks5_session_terminate (s);
+    }
+}
+
+static void
+hev_socks5_event_task_entry (void *data)
+{
+    HevSocks5Worker *self = data;
+    int res;
+
+    LOG_D ("socks5 event task run");
+
+    res = hev_task_io_pipe_pipe (self->event_fds);
+    if (res < 0) {
+        LOG_E ("socks5 proxy pipe");
+        return;
+    }
+
+    hev_task_add_fd (hev_task_self (), self->event_fds[0], POLLIN);
+
+    for (;;) {
+        char val;
+
+        res = hev_task_io_read (self->event_fds[0], &val, sizeof (val), NULL,
+                                NULL);
+        if (res < sizeof (val))
+            continue;
+
+        if (val == 'r')
+            hev_socks5_worker_load (self);
+        else
+            break;
+    }
+
+    self->quit = 1;
+    hev_task_wakeup (self->task_worker);
+
+    close (self->event_fds[0]);
+    close (self->event_fds[1]);
+}
 
 HevSocks5Worker *
 hev_socks5_worker_new (void)
@@ -156,139 +286,4 @@ hev_socks5_worker_set_auth (HevSocks5Worker *self, HevSocks5Authenticator *auth)
     prev = atomic_exchange (ptr, (intptr_t)auth);
     if (prev)
         hev_object_unref (HEV_OBJECT (prev));
-}
-
-static int
-task_io_yielder (HevTaskYieldType type, void *data)
-{
-    HevSocks5Worker *self = data;
-
-    hev_task_yield (type);
-
-    return self->quit ? -1 : 0;
-}
-
-static void
-hev_socks5_session_task_entry (void *data)
-{
-    HevSocks5Session *s = data;
-    HevSocks5Worker *self = s->data;
-
-    hev_socks5_server_run (HEV_SOCKS5_SERVER (s));
-
-    hev_list_del (&self->session_set, &s->node);
-    hev_object_unref (HEV_OBJECT (s));
-}
-
-static void
-hev_socks5_worker_task_entry (void *data)
-{
-    HevSocks5Worker *self = data;
-    HevListNode *node;
-    int stack_size;
-    int fd;
-
-    LOG_D ("socks5 worker task run");
-
-    fd = self->fd;
-    hev_task_add_fd (hev_task_self (), fd, POLLIN);
-    stack_size = hev_config_get_misc_task_stack_size ();
-
-    for (;;) {
-        HevSocks5Session *s;
-        HevTask *task;
-        int nfd;
-
-        nfd = hev_task_io_socket_accept (fd, NULL, NULL, task_io_yielder, self);
-        if (nfd == -1) {
-            LOG_E ("socks5 proxy accept");
-            continue;
-        } else if (nfd < 0) {
-            break;
-        }
-
-        s = hev_socks5_session_new (nfd);
-        if (!s) {
-            close (nfd);
-            continue;
-        }
-
-        task = hev_task_new (stack_size);
-        if (!task) {
-            hev_object_unref (HEV_OBJECT (s));
-            continue;
-        }
-
-        if (self->auth_curr)
-            hev_socks5_server_set_auth (HEV_SOCKS5_SERVER (s), self->auth_curr);
-
-        s->task = task;
-        s->data = self;
-        hev_list_add_tail (&self->session_set, &s->node);
-        hev_task_run (task, hev_socks5_session_task_entry, s);
-    }
-
-    node = hev_list_first (&self->session_set);
-    for (; node; node = hev_list_node_next (node)) {
-        HevSocks5Session *s;
-
-        s = container_of (node, HevSocks5Session, node);
-        hev_socks5_session_terminate (s);
-    }
-}
-
-static void
-hev_socks5_event_task_entry (void *data)
-{
-    HevSocks5Worker *self = data;
-    int res;
-
-    LOG_D ("socks5 event task run");
-
-    res = hev_task_io_pipe_pipe (self->event_fds);
-    if (res < 0) {
-        LOG_E ("socks5 proxy pipe");
-        return;
-    }
-
-    hev_task_add_fd (hev_task_self (), self->event_fds[0], POLLIN);
-
-    for (;;) {
-        char val;
-
-        res = hev_task_io_read (self->event_fds[0], &val, sizeof (val), NULL,
-                                NULL);
-        if (res < sizeof (val))
-            continue;
-
-        if (val == 'r')
-            hev_socks5_worker_load (self);
-        else
-            break;
-    }
-
-    self->quit = 1;
-    hev_task_wakeup (self->task_worker);
-
-    close (self->event_fds[0]);
-    close (self->event_fds[1]);
-}
-
-static void
-hev_socks5_worker_load (HevSocks5Worker *self)
-{
-    atomic_intptr_t *ptr;
-    intptr_t prev;
-
-    LOG_D ("%p works worker load", self);
-
-    ptr = (atomic_intptr_t *)&self->auth_next;
-    prev = atomic_exchange_explicit (ptr, 0, memory_order_relaxed);
-    if (!prev)
-        return;
-
-    if (self->auth_curr)
-        hev_object_unref (HEV_OBJECT (self->auth_curr));
-
-    self->auth_curr = HEV_SOCKS5_AUTHENTICATOR (prev);
 }
