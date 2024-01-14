@@ -66,7 +66,7 @@ hev_socks5_user_mark_destruct (HevObject *base)
 
     LOG_D ("%p socks5 user mark destruct", self);
 
-    HEV_SOCKS5_USER_TYPE->finalizer (base);
+    HEV_SOCKS5_USER_TYPE->destruct (base);
 }
 
 HevObjectClass *
@@ -80,7 +80,7 @@ hev_socks5_user_mark_class (void)
         memcpy (kptr, HEV_SOCKS5_USER_TYPE, sizeof (HevSocks5UserClass));
 
         okptr->name = "HevSocks5UserMark";
-        okptr->finalizer = hev_socks5_user_mark_destruct;
+        okptr->destruct = hev_socks5_user_mark_destruct;
     }
 
     return okptr;

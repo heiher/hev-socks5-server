@@ -126,7 +126,7 @@ hev_socks5_session_destruct (HevObject *base)
 
     LOG_D ("%p socks5 session destruct", self);
 
-    HEV_SOCKS5_SERVER_TYPE->finalizer (base);
+    HEV_SOCKS5_SERVER_TYPE->destruct (base);
 }
 
 HevObjectClass *
@@ -142,7 +142,7 @@ hev_socks5_session_class (void)
         memcpy (kptr, HEV_SOCKS5_SERVER_TYPE, sizeof (HevSocks5ServerClass));
 
         okptr->name = "HevSocks5Session";
-        okptr->finalizer = hev_socks5_session_destruct;
+        okptr->destruct = hev_socks5_session_destruct;
 
         skptr = HEV_SOCKS5_CLASS (kptr);
         skptr->binder = hev_socks5_session_bind;

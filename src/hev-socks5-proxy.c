@@ -67,7 +67,6 @@ hev_socks5_proxy_load_file (HevSocks5Authenticator *auth, const char *file)
         nlen = strlen (name);
         plen = strlen (pass);
         user = hev_socks5_user_mark_new (name, nlen, pass, plen, mark);
-        hev_object_set_atomic (HEV_OBJECT (user), 1);
         res = hev_socks5_authenticator_add (auth, HEV_SOCKS5_USER (user));
         if (res < 0) {
             LOG_E ("socks5 proxy user conflict");
@@ -99,8 +98,6 @@ hev_socks5_proxy_load (void)
     if (!auth)
         return;
 
-    hev_object_set_atomic (HEV_OBJECT (auth), 1);
-
     if (file) {
         hev_socks5_proxy_load_file (auth, file);
     } else {
@@ -109,7 +106,6 @@ hev_socks5_proxy_load (void)
         user = hev_socks5_user_mark_new (name, strlen (name), pass,
                                          strlen (pass), 0);
         hev_socks5_authenticator_add (auth, HEV_SOCKS5_USER (user));
-        hev_object_set_atomic (HEV_OBJECT (user), 1);
     }
 
     for (i = 0; i < workers; i++) {
