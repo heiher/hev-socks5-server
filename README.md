@@ -94,6 +94,7 @@ killall -SIGUSR1 hev-socks5-server
 ```
 
 ## Contributors
+* **Ammar Faizi** - https://github.com/ammarfaizi2
 * **hev** - https://hev.cc
 * **pexcn** - <i@pexcn.me>
 
