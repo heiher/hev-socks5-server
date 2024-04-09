@@ -84,7 +84,7 @@ hev_socket_factory_get (HevSocketFactory *self)
     }
 
     res = setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof (one));
-    if (fd < 0) {
+    if (res < 0) {
         LOG_E ("socket factory reuse");
         goto exit_close;
     }
