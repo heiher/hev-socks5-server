@@ -100,6 +100,7 @@ hev_socks5_session_udp_bind (HevSocks5Server *self, int sock)
     const char *saddr;
     const char *sport;
     socklen_t alen;
+    int ipv6_only;
     int res;
 
     LOG_D ("%p socks5 session udp bind", self);
@@ -107,6 +108,15 @@ hev_socks5_session_udp_bind (HevSocks5Server *self, int sock)
     alen = sizeof (struct sockaddr_in6);
     saddr = hev_config_get_udp_listen_address ();
     sport = hev_config_get_udp_listen_port ();
+    ipv6_only = hev_config_get_listen_ipv6_only ();
+
+    if (ipv6_only) {
+        int one = 1;
+
+        res = setsockopt (sock, IPPROTO_IPV6, IPV6_V6ONLY, &one, sizeof (one));
+        if (res < 0)
+            return -1;
+    }
 
     if (saddr) {
         res = hev_netaddr_resolve (&addr, saddr, NULL);
