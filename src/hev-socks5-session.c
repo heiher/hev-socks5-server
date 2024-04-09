@@ -7,6 +7,7 @@
  ============================================================================
  */
 
+#include <stdlib.h>
 #include <string.h>
 
 #include <hev-memory-allocator.h>
@@ -92,6 +93,43 @@ hev_socks5_session_bind (HevSocks5 *self, int fd, const struct sockaddr *dest)
     return 0;
 }
 
+static int
+hev_socks5_session_udp_bind (HevSocks5Server *self, int sock)
+{
+    struct sockaddr_in6 addr;
+    const char *saddr;
+    const char *sport;
+    socklen_t alen;
+    int res;
+
+    LOG_D ("%p socks5 session udp bind", self);
+
+    alen = sizeof (struct sockaddr_in6);
+    saddr = hev_config_get_udp_listen_address ();
+    sport = hev_config_get_udp_listen_port ();
+
+    if (saddr) {
+        res = hev_netaddr_resolve (&addr, saddr, NULL);
+        if (res < 0)
+            return -1;
+    } else {
+        int fd;
+
+        fd = HEV_SOCKS5 (self)->fd;
+        res = getsockname (fd, (struct sockaddr *)&addr, &alen);
+        if (res < 0)
+            return -1;
+    }
+
+    addr.sin6_port = sport ? htons (strtoul (sport, NULL, 10)) : 0;
+
+    res = bind (sock, (struct sockaddr *)&addr, alen);
+    if (res < 0)
+        return -1;
+
+    return 0;
+}
+
 int
 hev_socks5_session_construct (HevSocks5Session *self, int fd)
 {
@@ -137,6 +175,7 @@ hev_socks5_session_class (void)
     HevObjectClass *okptr = HEV_OBJECT_CLASS (kptr);
 
     if (!okptr->name) {
+        HevSocks5ServerClass *sskptr;
         HevSocks5Class *skptr;
 
         memcpy (kptr, HEV_SOCKS5_SERVER_TYPE, sizeof (HevSocks5ServerClass));
@@ -146,6 +185,9 @@ hev_socks5_session_class (void)
 
         skptr = HEV_SOCKS5_CLASS (kptr);
         skptr->binder = hev_socks5_session_bind;
+
+        sskptr = HEV_SOCKS5_SERVER_CLASS (kptr);
+        sskptr->binder = hev_socks5_session_udp_bind;
     }
 
     return okptr;

@@ -21,6 +21,8 @@ static unsigned int workers;
 static int listen_ipv6_only;
 static char listen_address[256];
 static char listen_port[8];
+static char udp_listen_address[256];
+static char udp_listen_port[8];
 static char bind_address[256];
 static char bind_interface[256];
 static char auth_file[1024];
@@ -42,6 +44,8 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
     yaml_node_pair_t *pair;
     const char *addr = NULL;
     const char *port = NULL;
+    const char *udp_addr = NULL;
+    const char *udp_port = NULL;
     const char *bind_saddr = NULL;
     const char *bind_iface = NULL;
     const char *addr_type = NULL;
@@ -73,6 +77,10 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
             port = value;
         else if (0 == strcmp (key, "listen-address"))
             addr = value;
+        else if (0 == strcmp (key, "udp-port"))
+            udp_port = value;
+        else if (0 == strcmp (key, "udp-listen-address"))
+            udp_addr = value;
         else if (0 == strcmp (key, "listen-ipv6-only"))
             listen_ipv6_only = (0 == strcasecmp (value, "true")) ? 1 : 0;
         else if (0 == strcmp (key, "bind-address"))
@@ -100,6 +108,11 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
 
     strncpy (listen_port, port, 8 - 1);
     strncpy (listen_address, addr, 256 - 1);
+
+    if (udp_port)
+        strncpy (udp_listen_port, udp_port, 8 - 1);
+    if (udp_addr)
+        strncpy (udp_listen_address, udp_addr, 256 - 1);
 
     if (bind_saddr)
         strncpy (bind_address, bind_saddr, 256 - 1);
@@ -317,6 +330,24 @@ const char *
 hev_config_get_listen_port (void)
 {
     return listen_port;
+}
+
+const char *
+hev_config_get_udp_listen_address (void)
+{
+    if ('\0' == udp_listen_address[0])
+        return NULL;
+
+    return udp_listen_address;
+}
+
+const char *
+hev_config_get_udp_listen_port (void)
+{
+    if ('\0' == udp_listen_port[0])
+        return NULL;
+
+    return udp_listen_port;
 }
 
 int
