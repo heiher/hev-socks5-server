@@ -4,16 +4,37 @@
 
 HevSocks5Server is a simple, lightweight socks5 server for Unix.
 
-**Features**
+## Features
+
 * IPv4/IPv6. (dual stack)
 * Standard `CONNECT` command.
 * Standard `UDP ASSOCIATE` command.
 * Extended `FWD UDP` command. (UDP in TCP)
 * Multiple username/password authentication.
 
+## Benchmarks
+
+See [here](https://github.com/heiher/hev-socks5-server/wiki/Benchmarks) for more details.
+
+### Speed
+
+![](https://github.com/heiher/hev-socks5-server/wiki/res/upload-speed.png)
+![](https://github.com/heiher/hev-socks5-server/wiki/res/download-speed.png)
+
+### CPU usage
+
+![](https://github.com/heiher/hev-socks5-server/wiki/res/upload-cpu.png)
+![](https://github.com/heiher/hev-socks5-server/wiki/res/download-cpu.png)
+
+### Memory usage
+
+![](https://github.com/heiher/hev-socks5-server/wiki/res/upload-mem.png)
+![](https://github.com/heiher/hev-socks5-server/wiki/res/download-mem.png)
+
 ## How to Build
 
-**Unix**:
+### Unix
+
 ```bash
 git clone --recursive https://github.com/heiher/hev-socks5-server
 cd hev-socks5-server
@@ -23,7 +44,8 @@ make
 make ENABLE_STATIC=1
 ```
 
-**Android**:
+### Android
+
 ```bash
 mkdir hev-socks5-server
 cd hev-socks5-server
@@ -98,9 +120,11 @@ killall -SIGUSR1 hev-socks5-server
 ```
 
 ## Contributors
+
 * **Ammar Faizi** - https://github.com/ammarfaizi2
 * **hev** - https://hev.cc
 * **pexcn** - <i@pexcn.me>
 
 ## License
+
 GPLv3
