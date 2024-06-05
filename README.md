@@ -119,6 +119,29 @@ Send signal `SIGUSR1` to socks5 server process after the authentication file is 
 killall -SIGUSR1 hev-socks5-server
 ```
 
+### Limit number of connections
+
+For example, limit the number of connections for `jerry` up to `2`:
+
+#### Config
+
+```yaml
+auth:
+  file: conf/auth.txt
+```
+
+#### Auth file
+
+```
+jerry pass 1a
+```
+
+#### IPtables
+
+```bash
+iptables -A OUTPUT -p tcp --syn -m mark --mark 0x1a -m connlimit --connlimit-above 2 -j REJECT
+```
+
 ## Contributors
 
 * **Ammar Faizi** - https://github.com/ammarfaizi2
