@@ -150,4 +150,4 @@ iptables -A OUTPUT -p tcp --syn -m mark --mark 0x1a -m connlimit --connlimit-abo
 
 ## License
 
-GPLv3
+MIT
