@@ -1,8 +1,8 @@
 /*
  ============================================================================
  Name        : hev-config.h
- Author      : Heiher <r@hev.cc>
- Copyright   : Copyright (c) 2017 - 2022 hev
+ Author      : hev <r@hev.cc>
+ Copyright   : Copyright (c) 2017 - 2024 hev
  Description : Config
  ============================================================================
  */
@@ -10,7 +10,9 @@
 #ifndef __HEV_CONFIG_H__
 #define __HEV_CONFIG_H__
 
-int hev_config_init (const char *path);
+int hev_config_init_from_file (const char *config_path);
+int hev_config_init_from_str (const unsigned char *config_str,
+                              unsigned int config_len);
 void hev_config_fini (void);
 
 unsigned int hev_config_get_workers (void);

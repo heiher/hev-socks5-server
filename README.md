@@ -142,6 +142,47 @@ jerry pass 1a
 iptables -A OUTPUT -p tcp --syn -m mark --mark 0x1a -m connlimit --connlimit-above 2 -j REJECT
 ```
 
+## API
+
+```c
+/**
+ * hev_socks5_server_main_from_file:
+ * @config_path: config file path
+ *
+ * Start and run the socks5 server, this function will blocks until the
+ * hev_socks5_server_quit is called or an error occurs.
+ *
+ * Returns: returns zero on successful, otherwise returns -1.
+ *
+ * Since: 2.6.7
+ */
+int hev_socks5_server_main_from_file (const char *config_path);
+
+/**
+ * hev_socks5_server_main_from_str:
+ * @config_str: string config
+ * @config_len: the byte length of string config
+ *
+ * Start and run the socks5 server, this function will blocks until the
+ * hev_socks5_server_quit is called or an error occurs.
+ *
+ * Returns: returns zero on successful, otherwise returns -1.
+ *
+ * Since: 2.6.7
+ */
+int hev_socks5_server_main_from_str (const unsigned char *config_str,
+                                     unsigned int config_len);
+
+/**
+ * hev_socks5_server_quit:
+ *
+ * Stop the socks5 server.
+ *
+ * Since: 2.6.7
+ */
+void hev_socks5_server_quit (void);
+```
+
 ## Contributors
 
 * **Ammar Faizi** - https://github.com/ammarfaizi2

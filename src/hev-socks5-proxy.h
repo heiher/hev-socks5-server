@@ -14,5 +14,6 @@ int hev_socks5_proxy_init (void);
 void hev_socks5_proxy_fini (void);
 
 void hev_socks5_proxy_run (void);
+void hev_socks5_proxy_stop (void);
 
 #endif /* __HEV_SOCKS5_PROXY_H__ */

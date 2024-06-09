@@ -122,22 +122,7 @@ hev_socks5_proxy_load (void)
 static void
 sigint_handler (int signum)
 {
-    int i;
-
-    if (signum == SIGUSR1) {
-        hev_socks5_proxy_load ();
-        return;
-    }
-
-    for (i = 0; i < workers; i++) {
-        HevSocks5Worker *worker;
-
-        worker = worker_list[i];
-        if (!worker)
-            continue;
-
-        hev_socks5_worker_stop (worker);
-    }
+    hev_socks5_proxy_load ();
 }
 
 int
@@ -178,7 +163,6 @@ hev_socks5_proxy_init (void)
     }
 
     signal (SIGPIPE, SIG_IGN);
-    signal (SIGINT, sigint_handler);
     signal (SIGUSR1, sigint_handler);
 
     return 0;
@@ -305,5 +289,21 @@ hev_socks5_proxy_run (void)
 
         hev_socks5_worker_destroy (worker_list[0]);
         worker_list[0] = NULL;
+    }
+}
+
+void
+hev_socks5_proxy_stop (void)
+{
+    int i;
+
+    for (i = 0; i < workers; i++) {
+        HevSocks5Worker *worker;
+
+        worker = worker_list[i];
+        if (!worker)
+            continue;
+
+        hev_socks5_worker_stop (worker);
     }
 }
