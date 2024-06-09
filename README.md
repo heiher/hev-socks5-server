@@ -9,7 +9,7 @@ HevSocks5Server is a simple, lightweight socks5 server for Unix.
 * IPv4/IPv6. (dual stack)
 * Standard `CONNECT` command.
 * Standard `UDP ASSOCIATE` command.
-* Extended `FWD UDP` command. (UDP in TCP)
+* Extended `FWD UDP` command. (UDP in TCP) [^1]
 * Multiple username/password authentication.
 
 ## Benchmarks
@@ -192,3 +192,5 @@ void hev_socks5_server_quit (void);
 ## License
 
 MIT
+
+[^1]: The [hev-socks5-tunnel](https://github.com/heiher/hev-socks5-tunnel) and [hev-socks5-tproxy](https://github.com/heiher/hev-socks5-tproxy) clients support UDP relay over TCP.
