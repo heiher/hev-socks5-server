@@ -54,6 +54,15 @@ cd jni
 ndk-build
 ```
 
+### iOS and MacOS
+
+```bash
+git clone --recursive https://github.com/heiher/hev-socks5-server
+cd hev-socks5-server
+# will generate HevSocks5Server.xcframework
+./build-apple.sh
+```
+
 ## How to Use
 
 ### Config

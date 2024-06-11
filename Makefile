@@ -23,8 +23,13 @@ INSTDIR=/usr/local
 THIRDPARTDIR=third-part
 
 CONFIG=$(CONFDIR)/main.yml
-TARGET=$(BINDIR)/hev-socks5-server
+EXEC_TARGET=$(BINDIR)/hev-socks5-server
+STATIC_TARGET=$(BINDIR)/lib$(PROJECT).a
+SHARED_TARGET=$(BINDIR)/lib$(PROJECT).so
 THIRDPARTS=$(THIRDPARTDIR)/yaml $(THIRDPARTDIR)/hev-task-system
+
+$(SHARED_TARGET) : CCFLAGS+=-fPIC
+$(SHARED_TARGET) : LDFLAGS+=-shared -pthread
 
 -include build.mk
 CCFLAGS+=$(VERSION_CFLAGS)
@@ -52,12 +57,19 @@ ifeq ($(V),1)
 	undefine ECHO_PREFIX
 endif
 
-.PHONY: all clean install uninstall tp-build tp-clean
+.PHONY: exec static shared clean install uninstall tp-static tp-shared tp-clean
 
-all : $(TARGET)
+exec : $(EXEC_TARGET)
 
-tp-build : $(THIRDPARTS)
-	@$(foreach dir,$^,$(MAKE) --no-print-directory -C $(dir);)
+static : $(STATIC_TARGET)
+
+shared : $(SHARED_TARGET)
+
+tp-static : $(THIRDPARTS)
+	@$(foreach dir,$^,$(MAKE) --no-print-directory -C $(dir) static;)
+
+tp-shared : $(THIRDPARTS)
+	@$(foreach dir,$^,$(MAKE) --no-print-directory -C $(dir) shared;)
 
 tp-clean : $(THIRDPARTS)
 	@$(foreach dir,$^,$(MAKE) --no-print-directory -C $(dir) clean;)
@@ -74,7 +86,7 @@ uninstall :
 	$(ECHO_PREFIX) $(RM) -rf $(INSTDIR)/etc/$(PROJECT).yml
 	@printf $(UNINSMSG) $(INSTDIR)/etc/$(PROJECT).yml
 
-$(INSTDIR)/bin/$(PROJECT) : $(TARGET)
+$(INSTDIR)/bin/$(PROJECT) : $(EXEC_TARGET)
 	$(ECHO_PREFIX) install -d -m 0755 $(dir $@)
 	$(ECHO_PREFIX) install -m 0755 $< $@
 	@printf $(INSTMSG) $< $@
@@ -84,12 +96,22 @@ $(INSTDIR)/etc/$(PROJECT).yml : $(CONFIG)
 	$(ECHO_PREFIX) install -m 0644 $< $@
 	@printf $(INSTMSG) $< $@
 
-$(TARGET) : $(LDOBJS) tp-build
+$(EXEC_TARGET) : $(LDOBJS) tp-static
 	$(ECHO_PREFIX) mkdir -p $(dir $@)
 	$(ECHO_PREFIX) $(CC) $(CCFLAGS) -o $@ $(LDOBJS) $(LDFLAGS)
 	@printf $(LINKMSG) $@
 	$(ECHO_PREFIX) $(STRIP) $@
 	@printf $(STRIPMSG) $@
+
+$(STATIC_TARGET) : $(LDOBJS) tp-static
+	$(ECHO_PREFIX) mkdir -p $(dir $@)
+	$(ECHO_PREFIX) $(AR) csq $@ $(LDOBJS)
+	@printf $(LINKMSG) $@
+
+$(SHARED_TARGET) : $(LDOBJS) tp-shared
+	$(ECHO_PREFIX) mkdir -p $(dir $@)
+	$(ECHO_PREFIX) $(CC) $(CCFLAGS) -o $@ $(LDOBJS) $(LDFLAGS)
+	@printf $(LINKMSG) $@
 
 $(BUILDDIR)/%.dep : $(SRCDIR)/%.c
 	$(ECHO_PREFIX) mkdir -p $(dir $@)
