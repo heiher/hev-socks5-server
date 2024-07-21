@@ -192,6 +192,12 @@ int hev_socks5_server_main_from_str (const unsigned char *config_str,
 void hev_socks5_server_quit (void);
 ```
 
+## Use Cases
+
+### Android App
+
+* [Socks5](https://github.com/heiher/socks5)
+
 ## Contributors
 
 * **Ammar Faizi** - https://github.com/ammarfaizi2
