@@ -23,7 +23,7 @@ static char listen_address[256];
 static char listen_port[8];
 static char udp_listen_address[256];
 static char udp_listen_port[8];
-static char bind_address[256];
+static char bind_address[2][256];
 static char bind_interface[256];
 static char auth_file[1024];
 static char username[256];
@@ -47,6 +47,8 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
     const char *udp_addr = NULL;
     const char *udp_port = NULL;
     const char *bind_saddr = NULL;
+    const char *bind_saddr4 = NULL;
+    const char *bind_saddr6 = NULL;
     const char *bind_iface = NULL;
     const char *addr_type = NULL;
 
@@ -85,6 +87,10 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
             listen_ipv6_only = (0 == strcasecmp (value, "true")) ? 1 : 0;
         else if (0 == strcmp (key, "bind-address"))
             bind_saddr = value;
+        else if (0 == strcmp (key, "bind-address-v4"))
+            bind_saddr4 = value;
+        else if (0 == strcmp (key, "bind-address-v6"))
+            bind_saddr6 = value;
         else if (0 == strcmp (key, "bind-interface"))
             bind_iface = value;
         else if (0 == strcmp (key, "domain-address-type"))
@@ -114,8 +120,14 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
     if (udp_addr)
         strncpy (udp_listen_address, udp_addr, 256 - 1);
 
-    if (bind_saddr)
-        strncpy (bind_address, bind_saddr, 256 - 1);
+    if (bind_saddr4 && bind_saddr4[0] != '\0')
+        strncpy (bind_address[0], bind_saddr4, 256 - 1);
+    else if (bind_saddr && bind_saddr[0] != '\0')
+        strncpy (bind_address[0], bind_saddr, 256 - 1);
+    if (bind_saddr6 && bind_saddr6[0] != '\0')
+        strncpy (bind_address[1], bind_saddr6, 256 - 1);
+    else if (bind_saddr && bind_saddr[0] != '\0')
+        strncpy (bind_address[1], bind_saddr, 256 - 1);
 
     if (bind_iface)
         strncpy (bind_interface, bind_iface, 256 - 1);
@@ -383,12 +395,14 @@ hev_config_get_listen_ipv6_only (void)
 }
 
 const char *
-hev_config_get_bind_address (void)
+hev_config_get_bind_address (int family)
 {
-    if ('\0' == bind_address[0])
+    int idx = family == AF_INET6;
+
+    if ('\0' == bind_address[idx][0])
         return NULL;
 
-    return bind_address;
+    return bind_address[idx];
 }
 
 const char *

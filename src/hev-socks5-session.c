@@ -55,11 +55,17 @@ hev_socks5_session_bind (HevSocks5 *self, int fd, const struct sockaddr *dest)
     HevSocks5Server *srv = HEV_SOCKS5_SERVER (self);
     const char *saddr;
     const char *iface;
+    int family;
     int res;
 
     LOG_D ("%p socks5 session bind", self);
 
-    saddr = hev_config_get_bind_address ();
+    if (IN6_IS_ADDR_V4MAPPED (&((struct sockaddr_in6 *)dest)->sin6_addr))
+        family = AF_INET;
+    else
+        family = AF_INET6;
+
+    saddr = hev_config_get_bind_address (family);
     iface = hev_config_get_bind_interface ();
 
     if (saddr) {

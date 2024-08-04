@@ -14,7 +14,12 @@ main:
   # Listen ipv6 only
   listen-ipv6-only: false
   # Bind source address (ipv4|ipv6)
-  bind-address: '::'
+  # It is overridden by bind-address-v{4,6} if specified
+  bind-address: ''
+  # Bind source address (ipv4)
+  bind-address-v4: ''
+  # Bind source address (ipv6)
+  bind-address-v6: ''
   # Bind source network interface
   bind-interface: ''
   # Domain address type (ipv4|ipv6|unspec)
