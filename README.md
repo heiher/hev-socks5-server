@@ -83,6 +83,8 @@ main:
   listen-ipv6-only: false
   # Bind source address (ipv4|ipv6)
   bind-address: '::'
+  # Bind source network interface
+  bind-interface: ''
   # Domain address type (ipv4|ipv6|unspec)
   domain-address-type: unspec
 
