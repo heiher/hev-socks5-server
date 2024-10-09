@@ -37,6 +37,7 @@ static int read_write_timeout = 60000;
 static int limit_nofile = 65535;
 static int log_level = HEV_LOGGER_WARN;
 static int domain_addr_type = HEV_SOCKS5_DOMAIN_ADDR_TYPE_UNSPEC;
+static unsigned int socket_mark;
 
 static int
 hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
@@ -44,6 +45,7 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
     yaml_node_pair_t *pair;
     const char *addr = NULL;
     const char *port = NULL;
+    const char *mark = NULL;
     const char *udp_addr = NULL;
     const char *udp_port = NULL;
     const char *bind_saddr = NULL;
@@ -95,6 +97,8 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
             bind_iface = value;
         else if (0 == strcmp (key, "domain-address-type"))
             addr_type = value;
+        else if (0 == strcmp (key, "mark"))
+            mark = value;
     }
 
     if (!workers) {
@@ -138,6 +142,9 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
         else if (0 == strcmp (addr_type, "ipv6"))
             domain_addr_type = HEV_SOCKS5_DOMAIN_ADDR_TYPE_IPV6;
     }
+
+    if (mark)
+        socket_mark = strtoul (mark, NULL, 0);
 
     return 0;
 }
@@ -418,6 +425,12 @@ int
 hev_config_get_domain_address_type (void)
 {
     return domain_addr_type;
+}
+
+unsigned int
+hev_config_get_socket_mark (void)
+{
+    return socket_mark;
 }
 
 const char *

@@ -24,6 +24,8 @@ main:
   bind-interface: ''
   # Domain address type (ipv4|ipv6|unspec)
   domain-address-type: unspec
+  # Socket mark (hex: 0x1, dec: 1, oct: 01)
+  mark: 0
 
 #auth:
 #  file: conf/auth.txt

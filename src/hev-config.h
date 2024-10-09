@@ -27,6 +27,7 @@ const char *hev_config_get_bind_address (int family);
 const char *hev_config_get_bind_interface (void);
 
 int hev_config_get_domain_address_type (void);
+unsigned int hev_config_get_socket_mark (void);
 
 const char *hev_config_get_auth_file (void);
 const char *hev_config_get_auth_username (void);
