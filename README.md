@@ -123,6 +123,10 @@ main:
 <USERNAME> <SPACE> <PASSWORD> <SPACE> <MARK> <LF>
 ```
 
+- USERNAME: A string of up to 255 characters
+- PASSWORD: A string of up to 255 characters
+- MARK: Hexadecimal
+
 ### Run
 
 ```bash
