@@ -211,6 +211,10 @@ void hev_socks5_server_quit (void);
 
 * [Socks5](https://github.com/heiher/socks5)
 
+### iOS App
+
+* [Socks5](https://github.com/heiher/socks5-ios)
+
 ## Contributors
 
 * **Ammar Faizi** - https://github.com/ammarfaizi2
