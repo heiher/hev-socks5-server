@@ -25,6 +25,9 @@
 #ifndef PKGNAME
 #define PKGNAME hev/socks5
 #endif
+#ifndef CLSNAME
+#define CLSNAME Socks5Service
+#endif
 /* clang-format on */
 
 #define STR(s) STR_ARG (s)
@@ -70,7 +73,7 @@ JNI_OnLoad (JavaVM *vm, void *reserved)
         return 0;
     }
 
-    klass = (*env)->FindClass (env, STR (PKGNAME) "/Socks5Service");
+    klass = (*env)->FindClass (env, STR (PKGNAME) "/" STR (CLSNAME));
     (*env)->RegisterNatives (env, klass, native_methods,
                              N_ELEMENTS (native_methods));
     (*env)->DeleteLocalRef (env, klass);
