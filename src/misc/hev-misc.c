@@ -61,6 +61,18 @@ hev_netaddr_resolve (struct sockaddr_in6 *daddr, const char *addr,
     return 0;
 }
 
+int
+hev_netaddr_is_any (struct sockaddr_in6 *addr)
+{
+    if (addr->sin6_port)
+        return 0;
+
+    if (!IN6_IS_ADDR_V4MAPPED (&addr->sin6_addr))
+        return !memcmp (&addr->sin6_addr, &in6addr_any, 16);
+
+    return !memcmp (&addr->sin6_addr.s6_addr[12], &in6addr_any, 4);
+}
+
 void
 run_as_daemon (const char *pid_file)
 {

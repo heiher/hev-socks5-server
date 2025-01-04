@@ -105,7 +105,8 @@ hev_socks5_session_bind (HevSocks5 *self, int fd, const struct sockaddr *dest)
 }
 
 static int
-hev_socks5_session_udp_bind (HevSocks5Server *self, int sock)
+hev_socks5_session_udp_bind (HevSocks5Server *self, int sock,
+                             const struct sockaddr *src)
 {
     struct sockaddr_in6 addr;
     const char *saddr;
@@ -143,10 +144,18 @@ hev_socks5_session_udp_bind (HevSocks5Server *self, int sock)
     }
 
     addr.sin6_port = sport ? htons (strtoul (sport, NULL, 10)) : 0;
-
     res = bind (sock, (struct sockaddr *)&addr, alen);
     if (res < 0)
         return -1;
+
+    if (hev_netaddr_is_any ((struct sockaddr_in6 *)src))
+        return 0;
+
+    res = connect (sock, src, sizeof (struct sockaddr_in6));
+    if (res < 0)
+        return -1;
+
+    HEV_SOCKS5 (self)->udp_associated = 1;
 
     return 0;
 }

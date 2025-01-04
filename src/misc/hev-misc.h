@@ -14,6 +14,7 @@
 
 int hev_netaddr_resolve (struct sockaddr_in6 *daddr, const char *addr,
                          const char *port);
+int hev_netaddr_is_any (struct sockaddr_in6 *addr);
 
 void run_as_daemon (const char *pid_file);
 int set_limit_nofile (int limit_nofile);
