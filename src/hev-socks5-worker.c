@@ -81,6 +81,7 @@ hev_socks5_session_task_entry (void *data)
 static void
 hev_socks5_worker_task_entry (void *data)
 {
+    HevTask *task = hev_task_self ();
     HevSocks5Worker *self = data;
     HevListNode *node;
     int stack_size;
@@ -89,7 +90,7 @@ hev_socks5_worker_task_entry (void *data)
     LOG_D ("socks5 worker task run");
 
     fd = self->fd;
-    hev_task_add_fd (hev_task_self (), fd, POLLIN);
+    hev_task_add_fd (task, fd, POLLIN);
     stack_size = hev_config_get_misc_task_stack_size ();
 
     for (;;) {
@@ -133,11 +134,14 @@ hev_socks5_worker_task_entry (void *data)
         s = container_of (node, HevSocks5Session, node);
         hev_socks5_session_terminate (s);
     }
+
+    hev_task_del_fd (task, fd);
 }
 
 static void
 hev_socks5_event_task_entry (void *data)
 {
+    HevTask *task = hev_task_self ();
     HevSocks5Worker *self = data;
     int res;
 
@@ -149,7 +153,7 @@ hev_socks5_event_task_entry (void *data)
         return;
     }
 
-    hev_task_add_fd (hev_task_self (), self->event_fds[0], POLLIN);
+    hev_task_add_fd (task, self->event_fds[0], POLLIN);
 
     for (;;) {
         char val;
@@ -168,6 +172,7 @@ hev_socks5_event_task_entry (void *data)
     self->quit = 1;
     hev_task_wakeup (self->task_worker);
 
+    hev_task_del_fd (task, self->event_fds[0]);
     close (self->event_fds[0]);
     close (self->event_fds[1]);
 }
