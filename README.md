@@ -2,7 +2,7 @@
 
 [![status](https://github.com/heiher/hev-socks5-server/actions/workflows/build.yaml/badge.svg?branch=master&event=push)](https://github.com/heiher/hev-socks5-server)
 
-HevSocks5Server is a simple, lightweight socks5 server for Unix.
+HevSocks5Server is a simple, lightweight socks5 server.
 
 ## Features
 
@@ -61,6 +61,15 @@ git clone --recursive https://github.com/heiher/hev-socks5-server
 cd hev-socks5-server
 # will generate HevSocks5Server.xcframework
 ./build-apple.sh
+```
+
+### Windows (MSYS2)
+
+```bash
+export MSYS=winsymlinks:native
+git clone --recursive https://github.com/heiher/hev-socks5-server
+cd hev-socks5-server
+make LFLAGS="-lmsys-2.0 -lws2_32"
 ```
 
 ## How to Use
@@ -217,7 +226,7 @@ void hev_socks5_server_quit (void);
 
 ## Contributors
 
-* **Ammar Faizi** - https://github.com/ammarfaizi2
+* **ammar faizi** - https://github.com/ammarfaizi2
 * **hev** - https://hev.cc
 * **pexcn** - <i@pexcn.me>
 
