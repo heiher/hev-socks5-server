@@ -96,12 +96,11 @@ hev_socket_factory_get (HevSocketFactory *self)
     if (res < 0 && self->fd < 0)
         self->fd = dup (fd);
 
-    if (self->ipv6_only) {
-        res = setsockopt (fd, IPPROTO_IPV6, IPV6_V6ONLY, &one, sizeof (one));
-        if (res < 0) {
-            LOG_E ("socket factory ipv6 only");
-            goto exit_close;
-        }
+    res = setsockopt (fd, IPPROTO_IPV6, IPV6_V6ONLY, &self->ipv6_only,
+                      sizeof (self->ipv6_only));
+    if (res < 0) {
+        LOG_E ("socket factory ipv6 only");
+        goto exit_close;
     }
 
     res = bind (fd, (struct sockaddr *)&self->addr, sizeof (self->addr));
