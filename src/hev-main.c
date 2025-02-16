@@ -23,7 +23,11 @@
 
 #include "hev-main.h"
 
+#ifdef __MSYS__
+#define WEAK
+#else
 #define WEAK __attribute__ ((weak))
+#endif
 
 static void
 show_help (const char *self_path)
