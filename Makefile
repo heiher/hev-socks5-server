@@ -12,8 +12,7 @@ CCFLAGS=-O3 -pipe -Wall -Werror $(CFLAGS) \
 		-I$(THIRDPARTDIR)/yaml/src \
 		-I$(THIRDPARTDIR)/hev-task-system/include
 LDFLAGS=-L$(THIRDPARTDIR)/yaml/bin -lyaml \
-		-L$(THIRDPARTDIR)/hev-task-system/bin -lhev-task-system \
-		-lpthread
+		-L$(THIRDPARTDIR)/hev-task-system/bin -lhev-task-system
 
 SRCDIR=src
 BINDIR=bin
@@ -56,6 +55,8 @@ ENABLE_STATIC :=
 ifeq ($(ENABLE_STATIC),1)
 	CCFLAGS+=-static
 endif
+
+LDFLAGS+=-lpthread $(LFLAGS)
 
 V :=
 ECHO_PREFIX := @
