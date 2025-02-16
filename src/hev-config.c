@@ -116,6 +116,13 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
         return -1;
     }
 
+#ifdef __MSYS__
+    if (workers > 1) {
+        fprintf (stderr, "Only supports one worker on Windows.\n");
+        workers = 1;
+    }
+#endif
+
     strncpy (listen_port, port, 8 - 1);
     strncpy (listen_address, addr, 256 - 1);
 
