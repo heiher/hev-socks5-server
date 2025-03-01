@@ -63,11 +63,11 @@ hev_socks5_server_main_inner (void)
 
     res = hev_logger_init (log_level, log_file);
     if (res < 0)
-        return -2;
+        goto exit1;
 
     res = hev_socks5_logger_init (log_level, log_file);
     if (res < 0)
-        return -3;
+        goto exit2;
 
     nofile = hev_config_get_misc_limit_nofile ();
     res = set_limit_nofile (nofile);
@@ -80,16 +80,18 @@ hev_socks5_server_main_inner (void)
 
     res = hev_socks5_proxy_init ();
     if (res < 0)
-        return -4;
+        goto exit3;
 
     hev_socks5_proxy_run ();
 
     hev_socks5_proxy_fini ();
+exit3:
     hev_socks5_logger_fini ();
+exit2:
     hev_logger_fini ();
+exit1:
     hev_config_fini ();
-
-    return 0;
+    return res;
 }
 
 int
