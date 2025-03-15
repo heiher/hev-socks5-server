@@ -26,7 +26,7 @@ int hev_config_get_listen_ipv6_only (void);
 const char *hev_config_get_bind_address (int family);
 const char *hev_config_get_bind_interface (void);
 
-int hev_config_get_domain_address_type (void);
+int hev_config_get_address_family (void);
 unsigned int hev_config_get_socket_mark (void);
 
 const char *hev_config_get_auth_file (void);

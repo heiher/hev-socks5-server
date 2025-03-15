@@ -36,7 +36,7 @@ static int connect_timeout = 5000;
 static int read_write_timeout = 60000;
 static int limit_nofile = 65535;
 static int log_level = HEV_LOGGER_WARN;
-static int domain_addr_type = HEV_SOCKS5_DOMAIN_ADDR_TYPE_UNSPEC;
+static int addr_family = HEV_SOCKS5_ADDR_FAMILY_UNSPEC;
 static unsigned int socket_mark;
 
 static int
@@ -145,9 +145,9 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
 
     if (addr_type) {
         if (0 == strcmp (addr_type, "ipv4"))
-            domain_addr_type = HEV_SOCKS5_DOMAIN_ADDR_TYPE_IPV4;
+            addr_family = HEV_SOCKS5_ADDR_FAMILY_IPV4;
         else if (0 == strcmp (addr_type, "ipv6"))
-            domain_addr_type = HEV_SOCKS5_DOMAIN_ADDR_TYPE_IPV6;
+            addr_family = HEV_SOCKS5_ADDR_FAMILY_IPV6;
     }
 
     if (mark)
@@ -429,9 +429,9 @@ hev_config_get_bind_interface (void)
 }
 
 int
-hev_config_get_domain_address_type (void)
+hev_config_get_address_family (void)
 {
-    return domain_addr_type;
+    return addr_family;
 }
 
 unsigned int
