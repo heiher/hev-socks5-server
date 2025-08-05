@@ -173,6 +173,20 @@ jerry pass 1a
 iptables -A OUTPUT -p tcp --syn -m mark --mark 0x1a -m connlimit --connlimit-above 2 -j REJECT
 ```
 
+#### OpenWrt 23.05+
+
+Repo: https://github.com/openwrt/packages/tree/master/net/hev-socks5-server
+
+```sh
+# Install package
+opkg install hev-socks5-server
+
+# Edit /etc/config/hev-socks5-server
+
+# Restart service
+/etc/init.d/hev-socks5-server restart
+```
+
 ## API
 
 ```c
