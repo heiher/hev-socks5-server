@@ -69,7 +69,7 @@ cd hev-socks5-server
 export MSYS=winsymlinks:native
 git clone --recursive https://github.com/heiher/hev-socks5-server
 cd hev-socks5-server
-make LFLAGS="-lmsys-2.0 -lws2_32"
+make
 ```
 
 ## How to Use

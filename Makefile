@@ -45,6 +45,10 @@ CLEANMSG="\e[1;34mCLEAN\e[0m %s\n"
 INSTMSG="\e[1;34mINST\e[0m  %s -> %s\n"
 UNINSMSG="\e[1;34mUNINS\e[0m %s\n"
 
+ifeq ($(MSYSTEM),MSYS)
+	LDFLAGS+=-lmsys-2.0 -lws2_32
+endif
+
 ENABLE_DEBUG :=
 ifeq ($(ENABLE_DEBUG),1)
 	CCFLAGS+=-g -O0 -DENABLE_DEBUG
