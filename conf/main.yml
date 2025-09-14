@@ -7,8 +7,8 @@ main:
   port: 1080
   # Listen address (ipv4|ipv6)
   listen-address: '::'
-  # UDP listen port
-  udp-port: 1080
+  # UDP listen port (0: random)
+# udp-port: 0
   # UDP listen address (ipv4|ipv6)
 # udp-listen-address: '::1'
   # Listen ipv6 only
