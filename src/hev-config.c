@@ -8,6 +8,7 @@
  */
 
 #include <stdio.h>
+#include <stdatomic.h>
 #include <arpa/inet.h>
 
 #include <yaml.h>
@@ -22,7 +23,6 @@ static int listen_ipv6_only;
 static char listen_address[256];
 static char listen_port[8];
 static char udp_listen_address[256];
-static char udp_listen_port[8];
 static char bind_address[2][256];
 static char bind_interface[256];
 static char auth_file[1024];
@@ -30,6 +30,8 @@ static char username[256];
 static char password[256];
 static char log_file[1024];
 static char pid_file[1024];
+static int udp_listen_port_beg;
+static int udp_listen_port_mod;
 static int task_stack_size = 8192;
 static int udp_recv_buffer_size = 524288;
 static int connect_timeout = 5000;
@@ -126,8 +128,21 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
     strncpy (listen_port, port, 8 - 1);
     strncpy (listen_address, addr, 256 - 1);
 
-    if (udp_port)
-        strncpy (udp_listen_port, udp_port, 8 - 1);
+    if (udp_port) {
+        unsigned int beg = 0, end = 0;
+
+        sscanf (udp_port, "%u-%u", &beg, &end);
+        if (end && beg > end) {
+            fprintf (stderr, "Invalid main.udp-port!\n");
+            return -1;
+        }
+        if (end == 0)
+            end = beg;
+
+        udp_listen_port_beg = beg;
+        udp_listen_port_mod = end - beg + 1;
+    }
+
     if (udp_addr)
         strncpy (udp_listen_address, udp_addr, 256 - 1);
 
@@ -393,13 +408,17 @@ hev_config_get_udp_listen_address (void)
     return udp_listen_address;
 }
 
-const char *
+int
 hev_config_get_udp_listen_port (void)
 {
-    if ('\0' == udp_listen_port[0])
-        return NULL;
+    static atomic_uint inc;
+    unsigned int cur;
 
-    return udp_listen_port;
+    if (udp_listen_port_mod <= 1)
+        return udp_listen_port_beg;
+
+    cur = atomic_fetch_add_explicit (&inc, 1, memory_order_relaxed);
+    return udp_listen_port_beg + (cur % udp_listen_port_mod);
 }
 
 int
