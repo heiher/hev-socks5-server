@@ -114,6 +114,7 @@ hev_socks5_session_udp_bind (HevSocks5Server *self, int sock,
     socklen_t alen;
     int ipv6_only;
     int one = 1;
+    int family;
     int sport;
     int res;
     int fd;
@@ -170,6 +171,20 @@ hev_socks5_session_udp_bind (HevSocks5Server *self, int sock,
     res = getsockname (sock, (struct sockaddr *)src, &alen);
     if (res < 0)
         return -1;
+
+    if (IN6_IS_ADDR_V4MAPPED (&src->sin6_addr))
+        family = AF_INET;
+    else
+        family = AF_INET6;
+
+    saddr = hev_config_get_udp_public_address (family);
+    if (saddr) {
+        sport = src->sin6_port;
+        res = hev_netaddr_resolve (src, saddr, NULL);
+        src->sin6_port = sport;
+        if (res < 0)
+            return -1;
+    }
 
     return 0;
 }

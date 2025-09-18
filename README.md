@@ -88,6 +88,10 @@ main:
 # udp-port: 0
   # UDP listen address (ipv4|ipv6)
 # udp-listen-address: '::1'
+  # UDP public address (ipv4)
+# udp-public-address-v4: ''
+  # UDP public address (ipv6)
+# udp-public-address-v6: ''
   # Listen ipv6 only
   listen-ipv6-only: false
   # Bind source address (ipv4|ipv6)

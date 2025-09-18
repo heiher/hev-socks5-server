@@ -21,6 +21,7 @@ const char *hev_config_get_listen_address (void);
 const char *hev_config_get_listen_port (void);
 const char *hev_config_get_udp_listen_address (void);
 int hev_config_get_udp_listen_port (void);
+const char *hev_config_get_udp_public_address (int family);
 int hev_config_get_listen_ipv6_only (void);
 
 const char *hev_config_get_bind_address (int family);

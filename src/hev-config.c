@@ -23,6 +23,7 @@ static int listen_ipv6_only;
 static char listen_address[256];
 static char listen_port[8];
 static char udp_listen_address[256];
+static char udp_public_address[2][256];
 static char bind_address[2][256];
 static char bind_interface[256];
 static char auth_file[1024];
@@ -49,6 +50,8 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
     const char *port = NULL;
     const char *mark = NULL;
     const char *udp_addr = NULL;
+    const char *udp_addr4 = NULL;
+    const char *udp_addr6 = NULL;
     const char *udp_port = NULL;
     const char *bind_saddr = NULL;
     const char *bind_saddr4 = NULL;
@@ -87,6 +90,10 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
             udp_port = value;
         else if (0 == strcmp (key, "udp-listen-address"))
             udp_addr = value;
+        else if (0 == strcmp (key, "udp-public-address-v4"))
+            udp_addr4 = value;
+        else if (0 == strcmp (key, "udp-public-address-v6"))
+            udp_addr6 = value;
         else if (0 == strcmp (key, "listen-ipv6-only"))
             listen_ipv6_only = (0 == strcasecmp (value, "true")) ? 1 : 0;
         else if (0 == strcmp (key, "bind-address"))
@@ -145,6 +152,10 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
 
     if (udp_addr)
         strncpy (udp_listen_address, udp_addr, 256 - 1);
+    if (udp_addr4)
+        strncpy (udp_public_address[0], udp_addr4, 256 - 1);
+    if (udp_addr6)
+        strncpy (udp_public_address[1], udp_addr6, 256 - 1);
 
     if (bind_saddr4 && bind_saddr4[0] != '\0')
         strncpy (bind_address[0], bind_saddr4, 256 - 1);
@@ -419,6 +430,17 @@ hev_config_get_udp_listen_port (void)
 
     cur = atomic_fetch_add_explicit (&inc, 1, memory_order_relaxed);
     return udp_listen_port_beg + (cur % udp_listen_port_mod);
+}
+
+const char *
+hev_config_get_udp_public_address (int family)
+{
+    int idx = family == AF_INET6;
+
+    if ('\0' == udp_public_address[idx][0])
+        return NULL;
+
+    return udp_public_address[idx];
 }
 
 int
