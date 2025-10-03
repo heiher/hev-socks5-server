@@ -36,7 +36,7 @@ static int udp_listen_port_mod;
 static int task_stack_size = 8192;
 static int udp_recv_buffer_size = 524288;
 static int connect_timeout = 5000;
-static int read_write_timeout = 60000;
+static int read_write_timeout = 300000;
 static int limit_nofile = 65535;
 static int log_level = HEV_LOGGER_WARN;
 static int addr_family = HEV_SOCKS5_ADDR_FAMILY_UNSPEC;
