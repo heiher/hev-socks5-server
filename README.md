@@ -117,7 +117,7 @@ main:
    # task stack size (bytes)
 #  task-stack-size: 8192
    # connect timeout (ms)
-#  connect-timeout: 5000
+#  connect-timeout: 10000
    # read-write timeout (ms)
 #  read-write-timeout: 300000
    # stdout, stderr or file-path
