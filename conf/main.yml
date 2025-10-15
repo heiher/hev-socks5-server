@@ -32,24 +32,24 @@ main:
   mark: 0
 
 #auth:
-#  file: conf/auth.txt
-#  username:
-#  password:
+# file: conf/auth.txt
+# username:
+# password:
 
 #misc:
-   # task stack size (bytes)
-#  task-stack-size: 8192
-   # udp recv buffer size (bytes)
-#  udp-recv-buffer-size: 524288
-   # connect timeout (ms)
-#  connect-timeout: 10000
-   # read-write timeout (ms)
-#  read-write-timeout: 300000
-   # stdout, stderr or file-path
-#  log-file: stderr
-   # debug, info, warn or error
-#  log-level: warn
-   # If present, run as a daemon with this pid file
-#  pid-file: /run/hev-socks5-server.pid
-   # If present, set rlimit nofile; else use default value
-#  limit-nofile: 65535
+  # task stack size (bytes)
+# task-stack-size: 8192
+  # udp socket recv buffer (SO_RCVBUF) size (bytes)
+# udp-recv-buffer-size: 524288
+  # TCP connect timeout (ms)
+# connect-timeout: 10000
+  # TCP and UDP read-write timeout (ms)
+# read-write-timeout: 300000
+  # stdout, stderr or file-path
+# log-file: stderr
+  # debug, info, warn or error
+# log-level: warn
+  # If present, run as a daemon with this pid file
+# pid-file: /run/hev-socks5-server.pid
+  # If present, set rlimit nofile; else use default value
+# limit-nofile: 65535
