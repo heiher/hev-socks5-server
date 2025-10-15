@@ -58,8 +58,9 @@ hev_socks5_server_main_inner (void)
 
     timeout = hev_config_get_misc_connect_timeout ();
     hev_socks5_set_connect_timeout (timeout);
-    timeout = hev_config_get_misc_read_write_timeout ();
+    timeout = hev_config_get_misc_tcp_read_write_timeout ();
     hev_socks5_set_tcp_timeout (timeout);
+    timeout = hev_config_get_misc_udp_read_write_timeout ();
     hev_socks5_set_udp_timeout (timeout);
 
     res = hev_config_get_misc_task_stack_size ();
