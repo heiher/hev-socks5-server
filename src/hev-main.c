@@ -69,6 +69,9 @@ hev_socks5_server_main_inner (void)
     res = hev_config_get_misc_udp_recv_buffer_size ();
     hev_socks5_set_udp_recv_buffer_size (res);
 
+    res = hev_config_get_misc_udp_copy_buffer_nums ();
+    hev_socks5_set_udp_copy_buffer_nums (res);
+
     res = hev_logger_init (log_level, log_file);
     if (res < 0)
         goto exit1;
