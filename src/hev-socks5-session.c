@@ -192,8 +192,6 @@ hev_socks5_session_udp_bind (HevSocks5Server *self, int sock,
 int
 hev_socks5_session_construct (HevSocks5Session *self, int fd)
 {
-    int read_write_timeout;
-    int connect_timeout;
     int addr_family;
     int res;
 
@@ -206,12 +204,7 @@ hev_socks5_session_construct (HevSocks5Session *self, int fd)
     HEV_OBJECT (self)->klass = HEV_SOCKS5_SESSION_TYPE;
 
     addr_family = hev_config_get_address_family ();
-    connect_timeout = hev_config_get_misc_connect_timeout ();
-    read_write_timeout = hev_config_get_misc_read_write_timeout ();
-
     hev_socks5_set_addr_family (HEV_SOCKS5 (self), addr_family);
-    hev_socks5_set_timeout (HEV_SOCKS5 (self), read_write_timeout);
-    hev_socks5_server_set_connect_timeout (&self->base, connect_timeout);
 
     return 0;
 }
