@@ -162,7 +162,7 @@ killall -SIGUSR1 hev-socks5-server
 
 ### Limit number of connections
 
-For example, limit the number of connections for `jerry` up to `2`:
+For example, limit the number of connections for `jerry` up to `26`:
 
 #### Config
 
