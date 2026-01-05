@@ -116,7 +116,7 @@ native_start_service (JNIEnv *env, jobject thiz, jstring config_path)
     (*env)->ReleaseStringUTFChars (env, config_path, (const char *)bytes);
 
     res = pthread_create (&work_thread, NULL, thread_handler, tdata);
-    if (res < 0) {
+    if (res != 0) {
         free (tdata->path);
         free (tdata);
         goto exit;
