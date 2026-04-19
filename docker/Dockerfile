@@ -13,6 +13,7 @@ COPY . /tmp/hev-socks5-server
 RUN apk update \
   && apk add --no-cache --virtual .build-deps build-base \
   && cd /tmp/hev-socks5-server \
+  && make clean \
   && make -j$(nproc) \
   && make install INSTDIR="/app" \
   && make clean \
