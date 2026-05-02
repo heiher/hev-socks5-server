@@ -10,6 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 
 #include <hev-task.h>
 #include <hev-task-io.h>
@@ -24,12 +25,14 @@
 struct _HevSocketFactory
 {
     struct sockaddr_in6 addr;
+    int tcp_fastopen;
     int ipv6_only;
     int fd;
 };
 
 HevSocketFactory *
-hev_socket_factory_new (const char *addr, const char *port, int ipv6_only)
+hev_socket_factory_new (const char *addr, const char *port, int ipv6_only,
+                        int tcp_fastopen)
 {
     HevSocketFactory *self;
     int res;
@@ -49,6 +52,7 @@ hev_socket_factory_new (const char *addr, const char *port, int ipv6_only)
         return NULL;
     }
 
+    self->tcp_fastopen = tcp_fastopen;
     self->ipv6_only = ipv6_only;
     self->fd = -1;
 
@@ -68,6 +72,7 @@ hev_socket_factory_destroy (HevSocketFactory *self)
 int
 hev_socket_factory_get (HevSocketFactory *self)
 {
+    int qlen = 100;
     int one = 1;
     int res;
     int fd;
@@ -107,6 +112,12 @@ hev_socket_factory_get (HevSocketFactory *self)
     if (res < 0) {
         LOG_E ("socket factory bind");
         goto exit_close;
+    }
+
+    if (self->tcp_fastopen) {
+        res = setsockopt (fd, IPPROTO_TCP, TCP_FASTOPEN, &qlen, sizeof (qlen));
+        if (res < 0)
+            LOG_W ("socket factory fastopen");
     }
 
     res = listen (fd, 100);

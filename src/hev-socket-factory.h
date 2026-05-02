@@ -13,7 +13,7 @@
 typedef struct _HevSocketFactory HevSocketFactory;
 
 HevSocketFactory *hev_socket_factory_new (const char *addr, const char *port,
-                                          int ipv6_only);
+                                          int ipv6_only, int tcp_fastopen);
 void hev_socket_factory_destroy (HevSocketFactory *self);
 
 int hev_socket_factory_get (HevSocketFactory *self);

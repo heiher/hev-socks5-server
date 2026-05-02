@@ -107,6 +107,8 @@ main:
   domain-address-type: unspec
   # Socket mark (hex: 0x1, dec: 1, oct: 01)
   mark: 0
+  # TCP fastopen
+# tcp-fastopen: false
 
 #auth:
 # file: conf/auth.txt

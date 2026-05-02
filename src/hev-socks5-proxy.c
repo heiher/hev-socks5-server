@@ -161,7 +161,8 @@ hev_socks5_proxy_init (void)
 
     factory = hev_socket_factory_new (hev_config_get_listen_address (),
                                       hev_config_get_listen_port (),
-                                      hev_config_get_listen_ipv6_only ());
+                                      hev_config_get_listen_ipv6_only (),
+                                      hev_config_get_tcp_fastopen ());
     if (!factory) {
         LOG_E ("socks5 proxy socket factory");
         goto exit;

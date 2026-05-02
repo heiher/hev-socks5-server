@@ -43,6 +43,7 @@ static int limit_nofile = 65535;
 static int log_level = HEV_LOGGER_WARN;
 static int addr_family = HEV_SOCKS5_ADDR_FAMILY_UNSPEC;
 static unsigned int socket_mark;
+static int tcp_fastopen;
 
 static int
 hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
@@ -51,6 +52,7 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
     const char *addr = NULL;
     const char *port = NULL;
     const char *mark = NULL;
+    const char *tfso = NULL;
     const char *udp_addr = NULL;
     const char *udp_addr4 = NULL;
     const char *udp_addr6 = NULL;
@@ -110,6 +112,8 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
             addr_type = value;
         else if (0 == strcmp (key, "mark"))
             mark = value;
+        else if (0 == strcmp (key, "tcp-fastopen"))
+            tfso = value;
     }
 
     if (!workers) {
@@ -180,6 +184,9 @@ hev_config_parse_main (yaml_document_t *doc, yaml_node_t *base)
 
     if (mark)
         socket_mark = strtoul (mark, NULL, 0);
+
+    if (tfso)
+        tcp_fastopen = (0 == strcasecmp (tfso, "true")) ? 1 : 0;
 
     return 0;
 }
@@ -500,6 +507,12 @@ unsigned int
 hev_config_get_socket_mark (void)
 {
     return socket_mark;
+}
+
+int
+hev_config_get_tcp_fastopen (void)
+{
+    return tcp_fastopen;
 }
 
 const char *
