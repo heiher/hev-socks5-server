@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           submodules: true
@@ -28,7 +28,7 @@ jobs:
           echo ${REV_ID} > hev-socks5-server-${{ github.ref_name }}/.rev-id
           tar cJf hev-socks5-server-${{ github.ref_name }}.tar.xz hev-socks5-server-${{ github.ref_name }}
       - name: Upload source
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: hev-socks5-server-${{ github.ref_name }}.tar.xz
           path: hev-socks5-server-${{ github.ref_name }}.tar.xz
@@ -97,7 +97,7 @@ jobs:
             tool: x86_64-unknown-linux-musl
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           submodules: true
@@ -109,7 +109,7 @@ jobs:
           make CROSS_PREFIX=/opt/x-tools/${{ matrix.tool }}/bin/${{ matrix.tool }}- CFLAGS=${{ matrix.env.CFLAGS }} ENABLE_STATIC=1 -j`nproc`
           cp bin/hev-socks5-server hev-socks5-server-linux-${{ matrix.name }}
       - name: Upload ${{ matrix.name }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: hev-socks5-server-linux-${{ matrix.name }}
           path: hev-socks5-server-linux-${{ matrix.name }}
@@ -124,7 +124,7 @@ jobs:
         shell: cmd
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           submodules: true
@@ -152,7 +152,7 @@ jobs:
           wget -P hev-socks5-server https://github.com/heiher/msys2/releases/latest/download/msys-2.0.dll
           zip -r ../hev-socks5-server-win64.zip hev-socks5-server
       - name: Upload ${{ matrix.name }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: hev-socks5-server-win64.zip
           path: hev-socks5-server-win64.zip
@@ -171,7 +171,7 @@ jobs:
             flags: -arch x86_64 -mmacosx-version-min=10.6
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           submodules: true
@@ -180,7 +180,7 @@ jobs:
           make CC=clang CFLAGS="${{ matrix.flags }}" LFLAGS="${{ matrix.flags }}" -j $(sysctl -n hw.logicalcpu)
           cp bin/hev-socks5-server hev-socks5-server-darwin-${{ matrix.name }}
       - name: Upload ${{ matrix.name }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: hev-socks5-server-darwin-${{ matrix.name }}
           path: hev-socks5-server-darwin-${{ matrix.name }}
@@ -192,7 +192,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           submodules: true
@@ -206,7 +206,7 @@ jobs:
             gmake
             cp bin/hev-socks5-server hev-socks5-server-freebsd-x86_64
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: hev-socks5-server-freebsd-x86_64
           path: hev-socks5-server-freebsd-x86_64
@@ -225,11 +225,11 @@ jobs:
     if: github.event_name == 'release'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: release
           pattern: "hev-*"
@@ -248,7 +248,7 @@ jobs:
     if: github.event_name != 'release'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           submodules: true
@@ -262,7 +262,7 @@ jobs:
     if: github.event_name != 'release'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           submodules: true
@@ -281,7 +281,7 @@ jobs:
     if: github.event_name != 'release'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           submodules: true
