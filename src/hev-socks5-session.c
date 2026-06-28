@@ -72,6 +72,7 @@ hev_socks5_session_bind (HevSocks5 *self, int fd, const struct sockaddr *dest)
     if (saddr) {
         struct sockaddr_in6 addr;
 
+        memset (&addr, 0, sizeof (addr));
         res = hev_netaddr_resolve (&addr, saddr, NULL);
         if (res < 0)
             return -1;
@@ -138,6 +139,7 @@ hev_socks5_session_udp_bind (HevSocks5Server *self, int sock,
             return -1;
     }
 
+    memset (&addr, 0, sizeof (addr));
     alen = sizeof (struct sockaddr_in6);
     if (saddr)
         res = hev_netaddr_resolve (&addr, saddr, NULL);
