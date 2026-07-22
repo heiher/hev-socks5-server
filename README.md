@@ -201,6 +201,8 @@ opkg install hev-socks5-server
 
 ## API
 
+### C
+
 ```c
 /**
  * hev_socks5_server_main_from_file:
@@ -240,6 +242,25 @@ int hev_socks5_server_main_from_str (const unsigned char *config_str,
 void hev_socks5_server_quit (void);
 ```
 
+### Java
+
+```java
+public class Socks5Service {
+	private static native boolean Socks5StartService(String config_path);
+	private static native boolean Socks5StopService();
+	private static native boolean Socks5IsRunning();
+
+	static {
+		System.loadLibrary("hev-socks5-server");
+	}
+```
+
+Allow overriding the package and class names in `Application.mk`[^3].
+
+```makefile
+APP_CFLAGS := -DPKGNAME=hev/socks5 -DCLSNAME=Socks5Service
+```
+
 ## Use Cases
 
 ### Android App
@@ -262,3 +283,4 @@ MIT
 
 [^1]: Windows is not supported at this time.
 [^2]: See [protocol specification](https://github.com/heiher/hev-socks5-core/tree/main?tab=readme-ov-file#udp-in-tcp). The [hev-socks5-tunnel](https://github.com/heiher/hev-socks5-tunnel) and [hev-socks5-tproxy](https://github.com/heiher/hev-socks5-tproxy) clients support UDP relay over TCP.
+[^3]: See [Application.mk](https://github.com/heiher/socks5/blob/364084079be989233286af2e33048a442fd06f45/app/src/main/jni/Application.mk#L19)
