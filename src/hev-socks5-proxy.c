@@ -137,7 +137,7 @@ hev_socks5_proxy_init (void)
 
     if (hev_task_system_init () < 0) {
         LOG_E ("socks5 proxy task system");
-        goto exit;
+        return -1;
     }
 
     task = hev_task_new (-1);
@@ -183,14 +183,26 @@ hev_socks5_proxy_fini (void)
 {
     LOG_D ("socks5 proxy fini");
 
-    if (task)
+    if (task) {
         hev_task_unref (task);
-    if (work_threads)
+        task = NULL;
+    }
+
+    if (work_threads) {
         hev_free (work_threads);
-    if (worker_list)
+        work_threads = NULL;
+    }
+
+    if (worker_list) {
         hev_free (worker_list);
-    if (factory)
+        worker_list = NULL;
+    }
+
+    if (factory) {
         hev_socket_factory_destroy (factory);
+        factory = NULL;
+    }
+
     hev_task_system_fini ();
 }
 
