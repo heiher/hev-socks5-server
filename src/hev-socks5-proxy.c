@@ -13,6 +13,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <stdatomic.h>
 
 #include <hev-task.h>
 #include <hev-task-system.h>
@@ -27,13 +28,27 @@
 
 #include "hev-socks5-proxy.h"
 
-static int listen_fd = -1;
-static unsigned int workers;
+enum
+{
+    SYNC_CONT = 1 << 0,
+    SYNC_ABRT = 1 << 1,
+    SYNC_SEND = 1 << 2,
+    SYNC_SENT = 1 << 3,
+    SYNC_WAIT = 1 << 4,
+    SYNC_STOP = 1 << 5,
+};
 
-static HevTask *task;
-static pthread_t *work_threads;
-static HevSocketFactory *factory;
-static HevSocks5Worker **worker_list;
+typedef struct _HevSocks5WorkerData HevSocks5WorkerData;
+
+struct _HevSocks5WorkerData
+{
+    HevSocks5Worker *worker;
+    pthread_t thread;
+    int ts;
+};
+
+static atomic_int tsync;
+static HevSocks5WorkerData *worker_list;
 
 static void
 hev_socks5_proxy_load_file (HevSocks5Authenticator *auth, const char *file)
@@ -87,6 +102,7 @@ hev_socks5_proxy_load (void)
 {
     HevSocks5Authenticator *auth;
     const char *file, *name, *pass;
+    int workers;
     int i;
 
     LOG_D ("socks5 proxy load");
@@ -113,10 +129,9 @@ hev_socks5_proxy_load (void)
             hev_socks5_authenticator_add (auth, HEV_SOCKS5_USER (user));
     }
 
+    workers = hev_config_get_workers ();
     for (i = 0; i < workers; i++) {
-        HevSocks5Worker *worker;
-
-        worker = worker_list[i];
+        HevSocks5Worker *worker = worker_list[i].worker;
         hev_socks5_worker_set_auth (worker, auth);
         hev_socks5_worker_reload (worker);
     }
@@ -130,50 +145,121 @@ sigint_handler (int signum)
     hev_socks5_proxy_load ();
 }
 
+static void *
+work_thread_handler (void *data)
+{
+    HevSocks5Worker *worker = data;
+    int res;
+
+retry:
+    res = atomic_load (&tsync);
+    if (res & SYNC_ABRT) {
+        goto exit;
+    } else if (!(res & SYNC_CONT)) {
+        usleep (500);
+        goto retry;
+    }
+
+    res = hev_task_system_init ();
+    if (res < 0) {
+        LOG_E ("socks5 proxy worker task system");
+        goto exit;
+    }
+
+    hev_socks5_worker_start (worker);
+
+    hev_task_system_run ();
+
+    hev_task_system_fini ();
+exit:
+    return NULL;
+}
+
 int
 hev_socks5_proxy_init (void)
 {
+    HevSocketFactory *factory;
+    const char *listen_addr;
+    const char *listen_port;
+    int tcp_fastopen;
+    int ipv6_only;
+    int workers;
+    int res;
+    int i;
+
     LOG_D ("socks5 proxy init");
 
-    if (hev_task_system_init () < 0) {
+    listen_addr = hev_config_get_listen_address ();
+    listen_port = hev_config_get_listen_port ();
+    ipv6_only = hev_config_get_listen_ipv6_only ();
+    tcp_fastopen = hev_config_get_tcp_fastopen ();
+
+    res = hev_task_system_init ();
+    if (res < 0) {
         LOG_E ("socks5 proxy task system");
         return -1;
     }
 
-    task = hev_task_new (-1);
-    if (!task) {
-        LOG_E ("socks5 proxy task");
-        goto exit;
-    }
-
-    workers = hev_config_get_workers ();
-    work_threads = hev_malloc0 (sizeof (pthread_t) * workers);
-    if (!work_threads) {
-        LOG_E ("socks5 proxy work threads");
-        goto exit;
-    }
-
-    worker_list = hev_malloc0 (sizeof (HevSocks5Worker *) * workers);
-    if (!worker_list) {
-        LOG_E ("socks5 proxy worker list");
-        goto exit;
-    }
-
-    factory = hev_socket_factory_new (hev_config_get_listen_address (),
-                                      hev_config_get_listen_port (),
-                                      hev_config_get_listen_ipv6_only (),
-                                      hev_config_get_tcp_fastopen ());
+    factory = hev_socket_factory_new (listen_addr, listen_port, ipv6_only,
+                                      tcp_fastopen);
     if (!factory) {
         LOG_E ("socks5 proxy socket factory");
         goto exit;
     }
 
+    workers = hev_config_get_workers ();
+    worker_list = hev_malloc0 (sizeof (HevSocks5WorkerData) * workers);
+    if (!worker_list) {
+        LOG_E ("socks5 proxy worker list");
+        goto exit;
+    }
+
+    atomic_fetch_and (&tsync, ~(SYNC_CONT | SYNC_ABRT));
+
+    for (i = 0; i < workers; i++) {
+        HevSocks5Worker *worker;
+        int fd;
+
+        fd = hev_socket_factory_get (factory);
+        if (fd < 0) {
+            LOG_E ("socks5 proxy socket factory get");
+            goto exit;
+        }
+
+        worker = hev_socks5_worker_new (fd);
+        if (!worker) {
+            LOG_E ("socks5 proxy worker %d", i);
+            close (fd);
+            goto exit;
+        }
+        worker_list[i].worker = worker;
+
+        /* Skip worker 0 */
+        if (i == 0)
+            continue;
+
+        res = pthread_create (&worker_list[i].thread, NULL, work_thread_handler,
+                              worker);
+        if (res != 0) {
+            LOG_E ("socks5 proxy worker %d thread", i);
+            goto exit;
+        }
+        worker_list[i].ts = 1;
+    }
+
+    hev_socket_factory_destroy (factory);
+    factory = NULL;
+
     signal (SIGPIPE, SIG_IGN);
     signal (SIGUSR1, sigint_handler);
+    atomic_fetch_or (&tsync, SYNC_SEND);
 
     return 0;
 
 exit:
+    atomic_fetch_or (&tsync, SYNC_ABRT);
+    if (factory)
+        hev_socket_factory_destroy (factory);
     hev_socks5_proxy_fini ();
     return -1;
 }
@@ -181,92 +267,33 @@ exit:
 void
 hev_socks5_proxy_fini (void)
 {
+    int res;
+
     LOG_D ("socks5 proxy fini");
 
-    if (task) {
-        hev_task_unref (task);
-        task = NULL;
-    }
-
-    if (work_threads) {
-        hev_free (work_threads);
-        work_threads = NULL;
+retry:
+    res = atomic_fetch_and (&tsync, ~(SYNC_SEND | SYNC_STOP | SYNC_SENT));
+    if (res & SYNC_WAIT) {
+        usleep (500);
+        goto retry;
     }
 
     if (worker_list) {
+        int workers = hev_config_get_workers ();
+        int i;
+
+        for (i = 0; i < workers; i++) {
+            if (worker_list[i].ts)
+                pthread_join (worker_list[i].thread, NULL);
+            if (worker_list[i].worker)
+                hev_socks5_worker_destroy (worker_list[i].worker);
+        }
+
         hev_free (worker_list);
         worker_list = NULL;
     }
 
-    if (factory) {
-        hev_socket_factory_destroy (factory);
-        factory = NULL;
-    }
-
     hev_task_system_fini ();
-}
-
-static void *
-work_thread_handler (void *data)
-{
-    HevSocks5Worker **worker = data;
-
-    if (hev_task_system_init () < 0) {
-        LOG_E ("socks5 proxy worker task system");
-        return NULL;
-    }
-
-    hev_socks5_worker_start (*worker);
-
-    hev_task_system_run ();
-
-    hev_socks5_worker_destroy (*worker);
-    *worker = NULL;
-
-    return NULL;
-}
-
-static void
-hev_socks5_proxy_task_entry (void *data)
-{
-    int i;
-
-    LOG_D ("socks5 proxy task run");
-
-    listen_fd = hev_socket_factory_get (factory);
-    if (listen_fd < 0)
-        return;
-
-    worker_list[0] = hev_socks5_worker_new (listen_fd);
-    if (!worker_list[0]) {
-        LOG_E ("socks5 proxy worker");
-        return;
-    }
-
-    hev_socks5_worker_start (worker_list[0]);
-
-    for (i = 1; i < workers; i++) {
-        int fd;
-
-        fd = hev_socket_factory_get (factory);
-        if (fd < 0) {
-            LOG_E ("socks5 proxy worker fd");
-            return;
-        }
-
-        worker_list[i] = hev_socks5_worker_new (fd);
-        if (!worker_list[i]) {
-            LOG_E ("socks5 proxy worker");
-            return;
-        }
-
-        pthread_create (&work_threads[i], NULL, work_thread_handler,
-                        &worker_list[i]);
-    }
-
-    hev_socks5_proxy_load ();
-
-    task = NULL;
 }
 
 void
@@ -274,36 +301,42 @@ hev_socks5_proxy_run (void)
 {
     LOG_D ("socks5 proxy run");
 
-    hev_task_run (task, hev_socks5_proxy_task_entry, NULL);
+    if (atomic_fetch_and (&tsync, ~SYNC_STOP) & SYNC_STOP)
+        return;
+
+    atomic_fetch_or (&tsync, SYNC_CONT);
+
+    hev_socks5_worker_start (worker_list[0].worker);
 
     hev_task_system_run ();
-
-    if (listen_fd >= 0)
-        close (listen_fd);
-
-    if (worker_list[0]) {
-        int i;
-
-        for (i = 1; i < workers; i++)
-            pthread_join (work_threads[i], NULL);
-
-        hev_socks5_worker_destroy (worker_list[0]);
-        worker_list[0] = NULL;
-    }
 }
 
 void
 hev_socks5_proxy_stop (void)
 {
-    int i;
+    int res;
 
-    for (i = 0; i < workers; i++) {
-        HevSocks5Worker *worker;
+    LOG_D ("socks5 proxy stop");
 
-        worker = worker_list[i];
-        if (!worker)
-            continue;
-
-        hev_socks5_worker_stop (worker);
+retry:
+    res = atomic_fetch_or (&tsync, SYNC_WAIT);
+    if (res & SYNC_WAIT) {
+        usleep (500);
+        goto retry;
     }
+
+    if (res & SYNC_SEND) {
+        res = atomic_fetch_or (&tsync, SYNC_SENT);
+        if (!(res & SYNC_SENT)) {
+            int workers;
+            int i;
+            workers = hev_config_get_workers ();
+            for (i = 0; i < workers; i++)
+                hev_socks5_worker_stop (worker_list[i].worker);
+        }
+    } else {
+        atomic_fetch_or (&tsync, SYNC_STOP | SYNC_ABRT);
+    }
+
+    atomic_fetch_and (&tsync, ~SYNC_WAIT);
 }
