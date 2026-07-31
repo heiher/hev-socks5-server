@@ -210,24 +210,10 @@ static void *
 work_thread_handler (void *data)
 {
     HevSocks5Worker **worker = data;
-    int res;
-    int fd;
 
     if (hev_task_system_init () < 0) {
         LOG_E ("socks5 proxy worker task system");
-        goto exit;
-    }
-
-    fd = hev_socket_factory_get (factory);
-    if (fd < 0) {
-        LOG_E ("socks5 proxy worker socket");
-        goto free;
-    }
-
-    res = hev_socks5_worker_init (*worker, fd);
-    if (res < 0) {
-        LOG_E ("socks5 proxy worker init");
-        goto free;
+        return NULL;
     }
 
     hev_socks5_worker_start (*worker);
@@ -237,18 +223,12 @@ work_thread_handler (void *data)
     hev_socks5_worker_destroy (*worker);
     *worker = NULL;
 
-free:
-    if (fd >= 0)
-        close (fd);
-    hev_task_system_fini ();
-exit:
     return NULL;
 }
 
 static void
 hev_socks5_proxy_task_entry (void *data)
 {
-    int res;
     int i;
 
     LOG_D ("socks5 proxy task run");
@@ -257,22 +237,24 @@ hev_socks5_proxy_task_entry (void *data)
     if (listen_fd < 0)
         return;
 
-    worker_list[0] = hev_socks5_worker_new ();
+    worker_list[0] = hev_socks5_worker_new (listen_fd);
     if (!worker_list[0]) {
         LOG_E ("socks5 proxy worker");
-        return;
-    }
-
-    res = hev_socks5_worker_init (worker_list[0], listen_fd);
-    if (res < 0) {
-        LOG_E ("socks5 proxy worker init");
         return;
     }
 
     hev_socks5_worker_start (worker_list[0]);
 
     for (i = 1; i < workers; i++) {
-        worker_list[i] = hev_socks5_worker_new ();
+        int fd;
+
+        fd = hev_socket_factory_get (factory);
+        if (fd < 0) {
+            LOG_E ("socks5 proxy worker fd");
+            return;
+        }
+
+        worker_list[i] = hev_socks5_worker_new (fd);
         if (!worker_list[i]) {
             LOG_E ("socks5 proxy worker");
             return;

@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdatomic.h>
+#include <sys/ioctl.h>
 
 #include <hev-task.h>
 #include <hev-task-io.h>
@@ -146,13 +147,6 @@ hev_socks5_event_task_entry (void *data)
 
     LOG_D ("socks5 event task run");
 
-    res = hev_task_io_socket_socketpair (PF_LOCAL, SOCK_STREAM, 0,
-                                         self->event_fds);
-    if (res < 0) {
-        LOG_E ("socks5 proxy eventfd");
-        return;
-    }
-
     hev_task_add_fd (task, self->event_fds[0], POLLIN);
 
     for (;;) {
@@ -173,16 +167,16 @@ hev_socks5_event_task_entry (void *data)
     hev_task_wakeup (self->task_worker);
 
     hev_task_del_fd (task, self->event_fds[0]);
-    close (self->event_fds[0]);
-    close (self->event_fds[1]);
 }
 
 HevSocks5Worker *
-hev_socks5_worker_new (void)
+hev_socks5_worker_new (int fd)
 {
     HevSocks5Worker *self;
+    int nonblock = 1;
+    int res;
 
-    self = calloc (1, sizeof (HevSocks5Worker));
+    self = hev_malloc0 (sizeof (HevSocks5Worker));
     if (!self)
         return NULL;
 
@@ -192,7 +186,37 @@ hev_socks5_worker_new (void)
     self->event_fds[0] = -1;
     self->event_fds[1] = -1;
 
+    res = socketpair (PF_LOCAL, SOCK_STREAM, 0, self->event_fds);
+    if (res < 0) {
+        LOG_E ("socks5 worker eventfd");
+        goto exit;
+    }
+
+    res = ioctl (self->event_fds[0], FIONBIO, (char *)&nonblock);
+    if (res < 0) {
+        LOG_E ("socks5 worker eventfd non-blocking");
+        goto exit;
+    }
+
+    self->task_worker = hev_task_new (-1);
+    if (!self->task_worker) {
+        LOG_E ("socks5 worker task worker");
+        goto exit;
+    }
+
+    self->task_event = hev_task_new (-1);
+    if (!self->task_event) {
+        LOG_E ("socks5 worker task event");
+        goto exit;
+    }
+
+    self->fd = fd;
+
     return self;
+
+exit:
+    hev_socks5_worker_destroy (self);
+    return NULL;
 }
 
 void
@@ -205,33 +229,19 @@ hev_socks5_worker_destroy (HevSocks5Worker *self)
     if (self->auth_next)
         hev_object_unref (HEV_OBJECT (self->auth_next));
 
+    if (self->task_worker)
+        hev_task_unref (self->task_worker);
+    if (self->task_event)
+        hev_task_unref (self->task_event);
+
     if (self->fd >= 0)
         close (self->fd);
+    if (self->event_fds[0] >= 0)
+        close (self->event_fds[0]);
+    if (self->event_fds[1] >= 0)
+        close (self->event_fds[1]);
 
-    free (self);
-}
-
-int
-hev_socks5_worker_init (HevSocks5Worker *self, int fd)
-{
-    LOG_D ("%p works worker init", self);
-
-    self->task_worker = hev_task_new (-1);
-    if (!self->task_worker) {
-        LOG_E ("socks5 worker task worker");
-        return -1;
-    }
-
-    self->task_event = hev_task_new (-1);
-    if (!self->task_event) {
-        LOG_E ("socks5 worker task event");
-        hev_task_unref (self->task_worker);
-        return -1;
-    }
-
-    self->fd = fd;
-
-    return 0;
+    hev_free (self);
 }
 
 void
@@ -239,7 +249,9 @@ hev_socks5_worker_start (HevSocks5Worker *self)
 {
     LOG_D ("%p works worker start", self);
 
+    hev_task_ref (self->task_event);
     hev_task_run (self->task_event, hev_socks5_event_task_entry, self);
+    hev_task_ref (self->task_worker);
     hev_task_run (self->task_worker, hev_socks5_worker_task_entry, self);
 }
 

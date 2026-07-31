@@ -14,9 +14,8 @@
 
 typedef struct _HevSocks5Worker HevSocks5Worker;
 
-HevSocks5Worker *hev_socks5_worker_new (void);
+HevSocks5Worker *hev_socks5_worker_new (int fd);
 void hev_socks5_worker_destroy (HevSocks5Worker *self);
-int hev_socks5_worker_init (HevSocks5Worker *self, int fd);
 
 void hev_socks5_worker_start (HevSocks5Worker *self);
 void hev_socks5_worker_stop (HevSocks5Worker *self);
