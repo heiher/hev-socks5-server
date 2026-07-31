@@ -72,16 +72,21 @@ JNI_OnLoad (JavaVM *vm, void *reserved)
 {
     JNIEnv *env = NULL;
     jclass klass;
+    jint res;
 
     java_vm = vm;
-    if (JNI_OK != (*vm)->GetEnv (vm, (void **)&env, JNI_VERSION_1_4)) {
-        return 0;
-    }
+    res = (*vm)->GetEnv (vm, (void **)&env, JNI_VERSION_1_4);
+    if (res != JNI_OK)
+        return JNI_ERR;
 
     klass = (*env)->FindClass (env, STR (PKGNAME) "/" STR (CLSNAME));
-    (*env)->RegisterNatives (env, klass, native_methods,
-                             N_ELEMENTS (native_methods));
+    if (!klass)
+        return JNI_ERR;
+    res = (*env)->RegisterNatives (env, klass, native_methods,
+                                   N_ELEMENTS (native_methods));
     (*env)->DeleteLocalRef (env, klass);
+    if (res < 0)
+        return JNI_ERR;
 
     pthread_key_create (&current_jni_env, detach_current_thread);
     pthread_mutex_init (&mutex, NULL);
