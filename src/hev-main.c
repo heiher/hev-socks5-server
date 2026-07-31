@@ -101,7 +101,6 @@ exit3:
 exit2:
     hev_logger_fini ();
 exit1:
-    hev_config_fini ();
     return res;
 }
 

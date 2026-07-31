@@ -33,15 +33,15 @@ static char log_file[1024];
 static char pid_file[1024];
 static int udp_listen_port_beg;
 static int udp_listen_port_mod;
-static int task_stack_size = 8192;
-static int udp_recv_buffer_size = 524288;
-static int udp_copy_buffer_nums = 10;
-static int connect_timeout = 10000;
-static int tcp_read_write_timeout = 300000;
-static int udp_read_write_timeout = 60000;
-static int limit_nofile = 65535;
-static int log_level = HEV_LOGGER_WARN;
-static int addr_family = HEV_SOCKS5_ADDR_FAMILY_UNSPEC;
+static int task_stack_size;
+static int udp_recv_buffer_size;
+static int udp_copy_buffer_nums;
+static int connect_timeout;
+static int tcp_read_write_timeout;
+static int udp_read_write_timeout;
+static int limit_nofile;
+static int log_level;
+static int addr_family;
 static unsigned int socket_mark;
 static int tcp_fastopen;
 
@@ -355,6 +355,38 @@ hev_config_parse_doc (yaml_document_t *doc)
     return 0;
 }
 
+static void
+hev_config_reset (void)
+{
+    workers = 0;
+    listen_ipv6_only = 0;
+    udp_listen_port_beg = 0;
+    udp_listen_port_mod = 0;
+    task_stack_size = 8192;
+    udp_recv_buffer_size = 524288;
+    udp_copy_buffer_nums = 10;
+    connect_timeout = 10000;
+    tcp_read_write_timeout = 300000;
+    udp_read_write_timeout = 60000;
+    limit_nofile = 65535;
+    log_level = HEV_LOGGER_WARN;
+    addr_family = HEV_SOCKS5_ADDR_FAMILY_UNSPEC;
+    socket_mark = 0;
+    tcp_fastopen = 0;
+
+    memset (listen_address, 0, sizeof (listen_address));
+    memset (listen_port, 0, sizeof (listen_port));
+    memset (udp_listen_address, 0, sizeof (udp_listen_address));
+    memset (udp_public_address, 0, sizeof (udp_public_address));
+    memset (bind_address, 0, sizeof (bind_address));
+    memset (bind_interface, 0, sizeof (bind_interface));
+    memset (auth_file, 0, sizeof (auth_file));
+    memset (username, 0, sizeof (username));
+    memset (password, 0, sizeof (password));
+    memset (log_file, 0, sizeof (log_file));
+    memset (pid_file, 0, sizeof (pid_file));
+}
+
 int
 hev_config_init_from_file (const char *path)
 {
@@ -362,6 +394,8 @@ hev_config_init_from_file (const char *path)
     yaml_document_t doc;
     FILE *fp;
     int res = -1;
+
+    hev_config_reset ();
 
     if (!yaml_parser_initialize (&parser))
         goto exit;
@@ -397,6 +431,8 @@ hev_config_init_from_str (const unsigned char *config_str,
     yaml_document_t doc;
     int res = -1;
 
+    hev_config_reset ();
+
     if (!yaml_parser_initialize (&parser))
         goto exit;
 
@@ -413,11 +449,6 @@ exit_free_parser:
     yaml_parser_delete (&parser);
 exit:
     return res;
-}
-
-void
-hev_config_fini (void)
-{
 }
 
 unsigned int
