@@ -13,7 +13,6 @@
 
 #include <hev-task.h>
 #include <hev-task-io.h>
-#include <hev-task-io-pipe.h>
 #include <hev-task-io-socket.h>
 #include <hev-memory-allocator.h>
 
@@ -147,9 +146,10 @@ hev_socks5_event_task_entry (void *data)
 
     LOG_D ("socks5 event task run");
 
-    res = hev_task_io_pipe_pipe (self->event_fds);
+    res = hev_task_io_socket_socketpair (PF_LOCAL, SOCK_STREAM, 0,
+                                         self->event_fds);
     if (res < 0) {
-        LOG_E ("socks5 proxy pipe");
+        LOG_E ("socks5 proxy eventfd");
         return;
     }
 
