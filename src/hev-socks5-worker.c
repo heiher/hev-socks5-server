@@ -7,6 +7,7 @@
  ============================================================================
  */
 
+#include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdatomic.h>
@@ -314,8 +315,10 @@ retry:
 
     if (res & SYNC_SEND) {
         res = atomic_fetch_or (&self->tsync, sent);
-        if (!(res & sent))
-            write (self->event_fds[1], &val, sizeof (val));
+        if (!(res & sent)) {
+            res = write (self->event_fds[1], &val, sizeof (val));
+            assert (res > 0 && "socks5 worker write event");
+        }
     } else {
         atomic_fetch_or (&self->tsync, type);
     }
