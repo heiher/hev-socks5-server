@@ -255,6 +255,20 @@ public class Socks5Service {
 	}
 ```
 
+### Kotlin
+
+```kt
+object Socks5Service {
+    private external fun Socks5StartService(config_path: String): Boolean
+    private external fun Socks5StopService(): Boolean
+    private external fun Socks5IsRunning(): Boolean
+
+    init {
+        System.loadLibrary("hev-socks5-server")
+    }
+}
+```
+
 Allow overriding the package and class names in `Application.mk`[^3].
 
 ```makefile
