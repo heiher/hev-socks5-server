@@ -250,6 +250,7 @@ hev_socks5_proxy_init (void)
     hev_socket_factory_destroy (factory);
     factory = NULL;
 
+    hev_socks5_proxy_load ();
     signal (SIGPIPE, SIG_IGN);
     signal (SIGUSR1, sigint_handler);
     atomic_fetch_or (&tsync, SYNC_SEND);
