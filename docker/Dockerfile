@@ -26,6 +26,7 @@ RUN apk update \
 # Runtime stage
 #
 FROM alpine
+LABEL org.opencontainers.image.source="https://github.com/heiher/hev-socks5-server"
 
 ENV TZ=Asia/Taipei
 

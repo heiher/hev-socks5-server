@@ -1,0 +1,13 @@
+/.idea/
+/.vscode/
+
+/.git/
+/.github/
+/README.md
+/LICENSE
+
+/bin/
+/build/
+
+/docker/Dockerfile
+/docker/README.md
