@@ -7,6 +7,7 @@
  ============================================================================
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -16,6 +17,8 @@
 #include <stdatomic.h>
 
 #include <hev-task.h>
+#include <hev-task-io.h>
+#include <hev-task-io-pipe.h>
 #include <hev-task-system.h>
 #include <hev-memory-allocator.h>
 #include <hev-socks5-authenticator.h>
@@ -49,6 +52,8 @@ struct _HevSocks5WorkerData
 
 static atomic_int tsync;
 static HevSocks5WorkerData *worker_list;
+static atomic_int reload_pending;
+static int reload_fds[2] = { -1, -1 };
 
 static int
 hev_socks5_proxy_load_file (HevSocks5Authenticator *auth, const char *file)
@@ -147,9 +152,49 @@ hev_socks5_proxy_load (void)
 }
 
 static void
-sigint_handler (int signum)
+sigusr1_handler (int signum)
 {
-    hev_socks5_proxy_load ();
+    int err = errno;
+    char val = 'r';
+
+    /*
+     * Only async-signal-safe calls here, the reload task does the work.
+     * Coalesce pending reloads so the pipe always has room for the stop.
+     */
+    if (!atomic_exchange (&reload_pending, 1)) {
+        if (write (reload_fds[1], &val, sizeof (val)) < 0)
+            atomic_store (&reload_pending, 0);
+    }
+
+    errno = err;
+}
+
+static void
+hev_socks5_proxy_reload_task_entry (void *data)
+{
+    HevTask *task = hev_task_self ();
+    int fd = reload_fds[0];
+
+    LOG_D ("socks5 proxy reload task run");
+
+    hev_task_add_fd (task, fd, POLLIN);
+
+    for (;;) {
+        char buf[64];
+        int res;
+
+        res = hev_task_io_read (fd, buf, sizeof (buf), NULL, NULL);
+        if (res <= 0)
+            break;
+
+        if (memchr (buf, 's', res))
+            break;
+
+        atomic_store (&reload_pending, 0);
+        hev_socks5_proxy_load ();
+    }
+
+    hev_task_del_fd (task, fd);
 }
 
 static void *
@@ -214,6 +259,14 @@ hev_socks5_proxy_init (void)
         goto exit;
     }
 
+    res = hev_task_io_pipe_pipe (reload_fds);
+    if (res < 0) {
+        LOG_E ("socks5 proxy reload pipe");
+        reload_fds[0] = -1;
+        reload_fds[1] = -1;
+        goto exit;
+    }
+
     workers = hev_config_get_workers ();
     worker_list = hev_malloc0 (sizeof (HevSocks5WorkerData) * workers);
     if (!worker_list) {
@@ -264,7 +317,7 @@ hev_socks5_proxy_init (void)
     }
 
     signal (SIGPIPE, SIG_IGN);
-    signal (SIGUSR1, sigint_handler);
+    signal (SIGUSR1, sigusr1_handler);
     atomic_fetch_or (&tsync, SYNC_SEND);
 
     return 0;
@@ -306,18 +359,34 @@ retry:
         worker_list = NULL;
     }
 
+    if (reload_fds[0] >= 0) {
+        signal (SIGUSR1, SIG_IGN);
+        close (reload_fds[0]);
+        close (reload_fds[1]);
+        reload_fds[0] = -1;
+        reload_fds[1] = -1;
+    }
+
     hev_task_system_fini ();
 }
 
 void
 hev_socks5_proxy_run (void)
 {
+    HevTask *task;
+
     LOG_D ("socks5 proxy run");
 
     if (atomic_fetch_and (&tsync, ~SYNC_STOP) & SYNC_STOP)
         return;
 
     atomic_fetch_or (&tsync, SYNC_CONT);
+
+    task = hev_task_new (-1);
+    if (task)
+        hev_task_run (task, hev_socks5_proxy_reload_task_entry, NULL);
+    else
+        LOG_E ("socks5 proxy reload task");
 
     hev_socks5_worker_start (worker_list[0].worker);
 
@@ -341,11 +410,14 @@ retry:
     if (res & SYNC_SEND) {
         res = atomic_fetch_or (&tsync, SYNC_SENT);
         if (!(res & SYNC_SENT)) {
+            char val = 's';
             int workers;
             int i;
             workers = hev_config_get_workers ();
             for (i = 0; i < workers; i++)
                 hev_socks5_worker_stop (worker_list[i].worker);
+            if (write (reload_fds[1], &val, sizeof (val)) < 0)
+                LOG_E ("socks5 proxy stop reload task");
         }
     } else {
         atomic_fetch_or (&tsync, SYNC_STOP | SYNC_ABRT);
