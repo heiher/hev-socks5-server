@@ -50,7 +50,7 @@ struct _HevSocks5WorkerData
 static atomic_int tsync;
 static HevSocks5WorkerData *worker_list;
 
-static void
+static int
 hev_socks5_proxy_load_file (HevSocks5Authenticator *auth, const char *file)
 {
     char *line = NULL;
@@ -60,8 +60,8 @@ hev_socks5_proxy_load_file (HevSocks5Authenticator *auth, const char *file)
 
     fp = fopen (file, "r");
     if (!fp) {
-        hev_object_unref (HEV_OBJECT (auth));
-        return;
+        LOG_E ("socks5 proxy open %s", file);
+        return -1;
     }
 
     while ((nread = getline (&line, &len, fp)) != -1) {
@@ -95,9 +95,11 @@ hev_socks5_proxy_load_file (HevSocks5Authenticator *auth, const char *file)
 
     free (line);
     fclose (fp);
+
+    return 0;
 }
 
-static void
+static int
 hev_socks5_proxy_load (void)
 {
     HevSocks5Authenticator *auth;
@@ -112,14 +114,17 @@ hev_socks5_proxy_load (void)
     pass = hev_config_get_auth_password ();
 
     if (!file && !name && !pass)
-        return;
+        return 0;
 
     auth = hev_socks5_authenticator_new ();
     if (!auth)
-        return;
+        return -1;
 
     if (file) {
-        hev_socks5_proxy_load_file (auth, file);
+        if (hev_socks5_proxy_load_file (auth, file) < 0) {
+            hev_object_unref (HEV_OBJECT (auth));
+            return -1;
+        }
     } else {
         HevSocks5UserMark *user;
 
@@ -137,6 +142,8 @@ hev_socks5_proxy_load (void)
     }
 
     hev_object_unref (HEV_OBJECT (auth));
+
+    return 0;
 }
 
 static void
@@ -250,7 +257,12 @@ hev_socks5_proxy_init (void)
     hev_socket_factory_destroy (factory);
     factory = NULL;
 
-    hev_socks5_proxy_load ();
+    res = hev_socks5_proxy_load ();
+    if (res < 0) {
+        LOG_E ("socks5 proxy load");
+        goto exit;
+    }
+
     signal (SIGPIPE, SIG_IGN);
     signal (SIGUSR1, sigint_handler);
     atomic_fetch_or (&tsync, SYNC_SEND);
