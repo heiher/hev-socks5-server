@@ -8,6 +8,7 @@
  */
 
 #include <assert.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdatomic.h>
@@ -113,7 +114,16 @@ hev_socks5_worker_task_entry (void *data)
 
         nfd = hev_task_io_socket_accept (fd, NULL, NULL, task_io_yielder, self);
         if (nfd == -1) {
+            int err = errno;
+
             LOG_E ("socks5 proxy accept");
+            /* Out of resources: let sessions run and release them. */
+            if (err == EMFILE || err == ENFILE || err == ENOBUFS ||
+                err == ENOMEM) {
+                hev_task_sleep (100);
+                if (!READ_ONCE (self->run))
+                    break;
+            }
             continue;
         } else if (nfd < 0) {
             break;
