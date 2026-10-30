@@ -10,9 +10,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <hev-sys.h>
+#include "hev-compat.h"
+
+#ifndef HEV_WIN_NATIVE
 #include <net/if.h>
 #include <sys/resource.h>
+#endif
 
 #if defined(__APPLE__)
 #include <Availability.h>
@@ -20,6 +24,9 @@
 #include <TargetConditionals.h>
 #endif
 
+#include <hev-task.h>
+#include <hev-task-io.h>
+#include <hev-task-io-socket.h>
 #include <hev-task-dns.h>
 
 #include "hev-logger.h"
@@ -81,6 +88,10 @@ run_as_daemon (const char *pid_file)
         return;
     }
 
+#ifdef HEV_WIN_NATIVE
+    /* No daemon on Windows, keep running in the foreground. */
+    fprintf (fp, "%lu\n", GetCurrentProcessId ());
+#else
 #ifndef TARGET_OS_TV
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -91,12 +102,17 @@ run_as_daemon (const char *pid_file)
 #endif
 
     fprintf (fp, "%u\n", getpid ());
+#endif
     fclose (fp);
 }
 
 int
 set_limit_nofile (int limit_nofile)
 {
+#ifdef HEV_WIN_NATIVE
+    (void)limit_nofile;
+    return 0;
+#else
     struct rlimit limit;
     int res;
 
@@ -112,6 +128,7 @@ set_limit_nofile (int limit_nofile)
     limit.rlim_cur = limit_nofile;
     limit.rlim_max = limit_nofile;
     return setrlimit (RLIMIT_NOFILE, &limit);
+#endif
 }
 
 int
@@ -123,7 +140,8 @@ set_sock_bind (int fd, const char *iface)
     struct ifreq ifr = { 0 };
 
     strncpy (ifr.ifr_name, iface, sizeof (ifr.ifr_name) - 1);
-    res = setsockopt (fd, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof (ifr));
+    res = hev_task_io_socket_setsockopt (fd, SOL_SOCKET, SO_BINDTODEVICE, &ifr,
+                                         sizeof (ifr));
 #elif defined(__APPLE__) || defined(__MACH__)
     int i;
 
@@ -132,7 +150,8 @@ set_sock_bind (int fd, const char *iface)
         return -1;
     }
 
-    res = setsockopt (fd, IPPROTO_IPV6, IPV6_BOUND_IF, &i, sizeof (i));
+    res = hev_task_io_socket_setsockopt (fd, IPPROTO_IPV6, IPV6_BOUND_IF, &i,
+                                         sizeof (i));
 #endif
 
     return res;
@@ -142,9 +161,11 @@ int
 set_sock_mark (int fd, unsigned int mark)
 {
 #if defined(__linux__)
-    return setsockopt (fd, SOL_SOCKET, SO_MARK, &mark, sizeof (mark));
+    return hev_task_io_socket_setsockopt (fd, SOL_SOCKET, SO_MARK, &mark,
+                                          sizeof (mark));
 #elif defined(__FreeBSD__)
-    return setsockopt (fd, SOL_SOCKET, SO_USER_COOKIE, &mark, sizeof (mark));
+    return hev_task_io_socket_setsockopt (fd, SOL_SOCKET, SO_USER_COOKIE, &mark,
+                                          sizeof (mark));
 #endif
     return 0;
 }

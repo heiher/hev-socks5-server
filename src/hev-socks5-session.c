@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <hev-task.h>
+#include <hev-task-io.h>
+#include <hev-task-io-socket.h>
 #include <hev-memory-allocator.h>
 
 #include "hev-misc.h"
@@ -77,7 +80,8 @@ hev_socks5_session_bind (HevSocks5 *self, int fd, const struct sockaddr *dest)
         if (res < 0)
             return -1;
 
-        res = bind (fd, (struct sockaddr *)&addr, sizeof (addr));
+        res = hev_task_io_socket_bind (fd, (struct sockaddr *)&addr,
+                                       sizeof (addr));
         if (res < 0)
             return -1;
     }
@@ -128,13 +132,15 @@ hev_socks5_session_udp_bind (HevSocks5Server *self, int sock,
     ipv6_only = hev_config_get_listen_ipv6_only ();
 
 #ifdef SO_REUSEPORT
-    res = setsockopt (sock, SOL_SOCKET, SO_REUSEPORT, &one, sizeof (one));
+    res = hev_task_io_socket_setsockopt (sock, SOL_SOCKET, SO_REUSEPORT, &one,
+                                         sizeof (one));
     if (res < 0)
         return -1;
 #endif
 
     if (ipv6_only) {
-        res = setsockopt (sock, IPPROTO_IPV6, IPV6_V6ONLY, &one, sizeof (one));
+        res = hev_task_io_socket_setsockopt (sock, IPPROTO_IPV6, IPV6_V6ONLY,
+                                             &one, sizeof (one));
         if (res < 0)
             return -1;
     }
@@ -144,18 +150,21 @@ hev_socks5_session_udp_bind (HevSocks5Server *self, int sock,
     if (saddr)
         res = hev_netaddr_resolve (&addr, saddr, NULL);
     else
-        res = getsockname (fd, (struct sockaddr *)&addr, &alen);
+        res = hev_task_io_socket_getsockname (fd, (struct sockaddr *)&addr,
+                                              &alen);
     if (res < 0)
         return -1;
 
     addr.sin6_port = htons (sport);
-    res = bind (sock, (struct sockaddr *)&addr, sizeof (struct sockaddr_in6));
+    res = hev_task_io_socket_bind (sock, (struct sockaddr *)&addr,
+                                   sizeof (struct sockaddr_in6));
     if (res < 0)
         return -1;
 
     if (hev_netaddr_is_any (dst)) {
         alen = sizeof (struct sockaddr_in6);
-        res = getpeername (fd, (struct sockaddr *)&addr, &alen);
+        res = hev_task_io_socket_getpeername (fd, (struct sockaddr *)&addr,
+                                              &alen);
         if (res < 0)
             return -1;
 
@@ -163,14 +172,16 @@ hev_socks5_session_udp_bind (HevSocks5Server *self, int sock,
         dst = &addr;
     }
 
-    res = connect (sock, (struct sockaddr *)dst, sizeof (struct sockaddr_in6));
+    res = hev_task_io_socket_connect (sock, (struct sockaddr *)dst,
+                                      sizeof (struct sockaddr_in6),
+                                      hev_task_io_nowait, NULL);
     if (res < 0)
         return -1;
 
     HEV_SOCKS5 (self)->udp_associated = !!dst->sin6_port;
 
     alen = sizeof (struct sockaddr_in6);
-    res = getsockname (sock, (struct sockaddr *)src, &alen);
+    res = hev_task_io_socket_getsockname (sock, (struct sockaddr *)src, &alen);
     if (res < 0)
         return -1;
 

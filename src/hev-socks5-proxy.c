@@ -12,8 +12,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
-#include <unistd.h>
-#include <pthread.h>
+#include <hev-sys.h>
 #include <stdatomic.h>
 
 #include <hev-task.h>
@@ -23,6 +22,8 @@
 #include <hev-memory-allocator.h>
 #include <hev-socks5-authenticator.h>
 
+#include "hev-misc.h"
+#include "hev-compat.h"
 #include "hev-config.h"
 #include "hev-logger.h"
 #include "hev-socks5-worker.h"
@@ -151,6 +152,7 @@ hev_socks5_proxy_load (void)
     return 0;
 }
 
+#ifdef SIGUSR1
 static void
 sigusr1_handler (int signum)
 {
@@ -162,12 +164,14 @@ sigusr1_handler (int signum)
      * Coalesce pending reloads so the pipe always has room for the stop.
      */
     if (!atomic_exchange (&reload_pending, 1)) {
-        if (write (reload_fds[1], &val, sizeof (val)) < 0)
+        if (hev_task_io_write (reload_fds[1], &val, sizeof (val),
+                               hev_task_io_nowait, NULL) < 0)
             atomic_store (&reload_pending, 0);
     }
 
     errno = err;
 }
+#endif
 
 static void
 hev_socks5_proxy_reload_task_entry (void *data)
@@ -289,7 +293,7 @@ hev_socks5_proxy_init (void)
         worker = hev_socks5_worker_new (fd);
         if (!worker) {
             LOG_E ("socks5 proxy worker %d", i);
-            close (fd);
+            hev_task_io_close (fd);
             goto exit;
         }
         worker_list[i].worker = worker;
@@ -316,8 +320,12 @@ hev_socks5_proxy_init (void)
         goto exit;
     }
 
+#ifdef SIGPIPE
     signal (SIGPIPE, SIG_IGN);
+#endif
+#ifdef SIGUSR1
     signal (SIGUSR1, sigusr1_handler);
+#endif
     atomic_fetch_or (&tsync, SYNC_SEND);
 
     return 0;
@@ -360,9 +368,11 @@ retry:
     }
 
     if (reload_fds[0] >= 0) {
+#ifdef SIGUSR1
         signal (SIGUSR1, SIG_IGN);
-        close (reload_fds[0]);
-        close (reload_fds[1]);
+#endif
+        hev_task_io_close (reload_fds[0]);
+        hev_task_io_close (reload_fds[1]);
         reload_fds[0] = -1;
         reload_fds[1] = -1;
     }
@@ -416,7 +426,8 @@ retry:
             workers = hev_config_get_workers ();
             for (i = 0; i < workers; i++)
                 hev_socks5_worker_stop (worker_list[i].worker);
-            if (write (reload_fds[1], &val, sizeof (val)) < 0)
+            if (hev_task_io_write (reload_fds[1], &val, sizeof (val),
+                                   hev_task_io_nowait, NULL) < 0)
                 LOG_E ("socks5 proxy stop reload task");
         }
     } else {

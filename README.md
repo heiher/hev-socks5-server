@@ -63,10 +63,35 @@ cd hev-socks5-server
 ./build-apple.sh
 ```
 
+### Windows (MSVC + Clang)
+
+The same `Makefile` builds natively with clang targeting MSVC. Open a Visual
+Studio developer prompt (clang from the VS LLVM component or `PATH`), make
+sure GNU make and a POSIX `sh.exe` (for example the one of Git for Windows,
+`C:\Program Files\Git\usr\bin`) are on `PATH`, then:
+
+```bat
+git clone --recursive https://github.com/heiher/hev-socks5-server
+cd hev-socks5-server
+make
+make ARCH=x86
+make ARCH=arm64
+make shared
+```
+
+`ARCH` is `x64` (default), `x86` or `arm64` and must match the developer
+prompt architecture. The executable is `bin/hev-socks5-server.exe`; the shared
+library is `bin/hev-socks5-server.dll` with the import library
+`bin/hev-socks5-server.dll.lib`, it embeds the third-parts. Run `make clean`
+when switching between the executable and the shared library.
+
+On native Windows there is no daemon mode (`pid-file` only writes the process
+id), no `limit-nofile`, no `bind-interface`/`mark`, and no reload on `SIGUSR1`.
+Stop the server with Ctrl+C.
+
 ### Windows (MSYS2)
 
 ```bash
-export MSYS=winsymlinks:native
 git clone --recursive https://github.com/heiher/hev-socks5-server
 cd hev-socks5-server
 make

@@ -16,6 +16,7 @@
 #include <hev-socks5-logger.h>
 
 #include "hev-misc.h"
+#include "hev-compiler.h"
 #include "hev-config.h"
 #include "hev-config-const.h"
 #include "hev-logger.h"
@@ -23,7 +24,7 @@
 
 #include "hev-main.h"
 
-#ifdef __MSYS__
+#if defined(__MSYS__) || defined(_WIN32)
 #define WEAK
 #else
 #define WEAK __attribute__ ((weak))
@@ -104,7 +105,7 @@ exit1:
     return res;
 }
 
-int
+EXPORT_SYMBOL int
 hev_socks5_server_main_from_file (const char *config_path)
 {
     int res = hev_config_init_from_file (config_path);
@@ -114,7 +115,7 @@ hev_socks5_server_main_from_file (const char *config_path)
     return hev_socks5_server_main_inner ();
 }
 
-int
+EXPORT_SYMBOL int
 hev_socks5_server_main_from_str (const unsigned char *config_str,
                                  unsigned int config_len)
 {
@@ -125,7 +126,7 @@ hev_socks5_server_main_from_str (const unsigned char *config_str,
     return hev_socks5_server_main_inner ();
 }
 
-void
+EXPORT_SYMBOL void
 hev_socks5_server_quit (void)
 {
     hev_socks5_proxy_stop ();

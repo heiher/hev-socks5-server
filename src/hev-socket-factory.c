@@ -8,9 +8,11 @@
  */
 
 #include <string.h>
-#include <unistd.h>
-#include <netinet/in.h>
+
+#include <hev-sys.h>
+#ifndef _WIN32
 #include <netinet/tcp.h>
+#endif
 
 #include <hev-task.h>
 #include <hev-task-io.h>
@@ -65,7 +67,7 @@ hev_socket_factory_destroy (HevSocketFactory *self)
     LOG_D ("socket factory destroy");
 
     if (self->fd >= 0)
-        close (self->fd);
+        hev_task_io_close (self->fd);
     hev_free (self);
 }
 
@@ -80,7 +82,7 @@ hev_socket_factory_get (HevSocketFactory *self)
     LOG_D ("socket factory get");
 
     if (self->fd >= 0)
-        return dup (self->fd);
+        return hev_task_io_dup (self->fd);
 
     fd = hev_task_io_socket_socket (AF_INET6, SOCK_STREAM, 0);
     if (fd < 0) {
@@ -88,7 +90,8 @@ hev_socket_factory_get (HevSocketFactory *self)
         goto exit;
     }
 
-    res = setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof (one));
+    res = hev_task_io_socket_setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, &one,
+                                         sizeof (one));
     if (res < 0) {
         LOG_E ("socket factory reuse");
         goto exit_close;
@@ -96,31 +99,35 @@ hev_socket_factory_get (HevSocketFactory *self)
 
     res = -1;
 #ifdef SO_REUSEPORT
-    res = setsockopt (fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof (one));
+    res = hev_task_io_socket_setsockopt (fd, SOL_SOCKET, SO_REUSEPORT, &one,
+                                         sizeof (one));
 #endif
     if (res < 0 && self->fd < 0)
-        self->fd = dup (fd);
+        self->fd = hev_task_io_dup (fd);
 
-    res = setsockopt (fd, IPPROTO_IPV6, IPV6_V6ONLY, &self->ipv6_only,
-                      sizeof (self->ipv6_only));
+    res = hev_task_io_socket_setsockopt (fd, IPPROTO_IPV6, IPV6_V6ONLY,
+                                         &self->ipv6_only,
+                                         sizeof (self->ipv6_only));
     if (res < 0) {
         LOG_E ("socket factory ipv6 only");
         goto exit_close;
     }
 
-    res = bind (fd, (struct sockaddr *)&self->addr, sizeof (self->addr));
+    res = hev_task_io_socket_bind (fd, (struct sockaddr *)&self->addr,
+                                   sizeof (self->addr));
     if (res < 0) {
         LOG_E ("socket factory bind");
         goto exit_close;
     }
 
     if (self->tcp_fastopen) {
-        res = setsockopt (fd, IPPROTO_TCP, TCP_FASTOPEN, &qlen, sizeof (qlen));
+        res = hev_task_io_socket_setsockopt (fd, IPPROTO_TCP, TCP_FASTOPEN,
+                                             &qlen, sizeof (qlen));
         if (res < 0)
             LOG_W ("socket factory fastopen");
     }
 
-    res = listen (fd, 100);
+    res = hev_task_io_socket_listen (fd, 100);
     if (res < 0) {
         LOG_E ("socket factory listen");
         goto exit_close;
@@ -129,7 +136,7 @@ hev_socket_factory_get (HevSocketFactory *self)
     return fd;
 
 exit_close:
-    close (fd);
+    hev_task_io_close (fd);
 exit:
     return -1;
 }

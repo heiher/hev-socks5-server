@@ -5,10 +5,11 @@ PROJECT=hev-socks5-server
 CROSS_PREFIX :=
 PP=$(CROSS_PREFIX)cpp
 CC=$(CROSS_PREFIX)gcc
+AR=$(CROSS_PREFIX)ar
 STRIP=$(CROSS_PREFIX)strip
 CCFLAGS=-O3 -pipe -Wall -Werror $(CFLAGS) \
 		-I$(SRCDIR)/misc \
-		-I$(SRCDIR)/core/include  \
+		-I$(SRCDIR)/core/include \
 		-I$(THIRDPARTDIR)/yaml/include \
 		-I$(THIRDPARTDIR)/hev-task-system/include
 LDFLAGS=-L$(THIRDPARTDIR)/yaml/bin -lyaml \
@@ -29,13 +30,59 @@ EXEC_TARGET=$(BINDIR)/hev-socks5-server
 STATIC_TARGET=$(BINDIR)/lib$(PROJECT).a
 SHARED_TARGET=$(BINDIR)/lib$(PROJECT).so
 THIRDPARTS=$(THIRDPARTDIR)/yaml $(THIRDPARTDIR)/hev-task-system
+EXEEXT=
 
+# Native Windows: clang targeting MSVC, built with the very same rules.
+# Run make from a Visual Studio developer prompt (x64, x86 or arm64) with
+# a POSIX sh.exe on PATH, e.g. Git for Windows:
+#   make ARCH=x64
+ifeq ($(OS),Windows_NT)
+ifeq ($(MSYSTEM),)
+WIN_NATIVE=1
+ARCH?=x64
+CROSS_TARGET_x64=x86_64
+CROSS_TARGET_x86=i686
+CROSS_TARGET_arm64=aarch64
+CC=clang --target=$(CROSS_TARGET_$(ARCH))-pc-windows-msvc
+PP=$(CC)
+AR=llvm-ar
+STRIP=true
+EXEEXT=.exe
+EXEC_TARGET=$(BINDIR)/hev-socks5-server$(EXEEXT)
+STATIC_TARGET=$(BINDIR)/$(PROJECT).lib
+SHARED_TARGET=$(BINDIR)/$(PROJECT).dll
+SHARED_IMPLIB=$(BINDIR)/$(PROJECT).dll.lib
+EXPORT_SYMBOL=
+CCFLAGS+=-DEXPORT_SYMBOL="$(EXPORT_SYMBOL)" -DYAML_DECLARE_STATIC \
+         -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_WARNINGS \
+         -D_WINSOCK_DEPRECATED_NO_WARNINGS \
+         -Wno-microsoft-enum-forward-reference
+LDFLAGS+=-lkernel32 -lws2_32
+ifneq ($(ARCH),arm64)
+# Coroutine switching is incompatible with the CET shadow stack.
+LDFLAGS+=-Wl,/CETCOMPAT:NO
+endif
+endif
+endif
+
+TPSHARED=tp-shared
+ifneq ($(WIN_NATIVE),1)
 $(SHARED_TARGET) : CCFLAGS+=-fPIC
 $(SHARED_TARGET) : LDFLAGS+=-shared -pthread
+else
+# The DLL exports what EXPORT_SYMBOL marks, and embeds the third-parts: the
+# system layer of the task system is not exported by its own DLL.
+TPSHARED=tp-static
+$(SHARED_TARGET) : EXPORT_SYMBOL=__declspec(dllexport)
+$(SHARED_TARGET) : CCFLAGS+=-Wno-dll-attribute-on-redeclaration
+$(SHARED_TARGET) : LDFLAGS+=-shared -Wl,/IMPLIB:$(SHARED_IMPLIB)
+endif
 
 -include build.mk
 CCFLAGS+=$(VERSION_CFLAGS)
+ifneq ($(WIN_NATIVE),1)
 TPFLAGS=ENABLE_STACK_OVERFLOW_DETECTOR=1
+endif
 CCSRCS=$(filter %.c,$(SRCFILES))
 ASSRCS=$(filter %.S,$(SRCFILES))
 LDOBJS=$(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(CCSRCS)) \
@@ -64,7 +111,10 @@ ifeq ($(ENABLE_STATIC),1)
 	CCFLAGS+=-static
 endif
 
-LDFLAGS+=-lpthread $(LFLAGS)
+ifneq ($(WIN_NATIVE),1)
+LDFLAGS+=-lpthread
+endif
+LDFLAGS+=$(LFLAGS)
 
 V :=
 ECHO_PREFIX := @
@@ -123,7 +173,7 @@ $(STATIC_TARGET) : $(LDOBJS) tp-static
 	$(ECHO_PREFIX) $(AR) csq $@ $(LDOBJS)
 	@printf $(LINKMSG) $@
 
-$(SHARED_TARGET) : $(LDOBJS) tp-shared
+$(SHARED_TARGET) : $(LDOBJS) $(TPSHARED)
 	$(ECHO_PREFIX) mkdir -p $(dir $@)
 	$(ECHO_PREFIX) $(CC) $(CCFLAGS) -o $@ $(LDOBJS) $(LDFLAGS)
 	@printf $(LINKMSG) $@

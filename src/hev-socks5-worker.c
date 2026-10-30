@@ -10,15 +10,16 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <hev-sys.h>
 #include <stdatomic.h>
-#include <sys/ioctl.h>
 
 #include <hev-task.h>
 #include <hev-task-io.h>
 #include <hev-task-io-socket.h>
 #include <hev-memory-allocator.h>
 
+#include "hev-misc.h"
+#include "hev-compat.h"
 #include "hev-config.h"
 #include "hev-logger.h"
 #include "hev-compiler.h"
@@ -131,7 +132,7 @@ hev_socks5_worker_task_entry (void *data)
 
         s = hev_socks5_session_new (nfd);
         if (!s) {
-            close (nfd);
+            hev_task_io_close (nfd);
             continue;
         }
 
@@ -203,7 +204,6 @@ HevSocks5Worker *
 hev_socks5_worker_new (int fd)
 {
     HevSocks5Worker *self;
-    int nonblock = 1;
     int res;
 
     self = hev_malloc0 (sizeof (HevSocks5Worker));
@@ -216,15 +216,10 @@ hev_socks5_worker_new (int fd)
     self->event_fds[0] = -1;
     self->event_fds[1] = -1;
 
-    res = socketpair (PF_LOCAL, SOCK_STREAM, 0, self->event_fds);
+    res = hev_task_io_socket_socketpair (PF_LOCAL, SOCK_STREAM, 0,
+                                         self->event_fds);
     if (res < 0) {
         LOG_E ("socks5 worker eventfd");
-        goto exit;
-    }
-
-    res = ioctl (self->event_fds[0], FIONBIO, (char *)&nonblock);
-    if (res < 0) {
-        LOG_E ("socks5 worker eventfd non-blocking");
         goto exit;
     }
 
@@ -272,11 +267,11 @@ retry:
         hev_task_unref (self->task_event);
 
     if (self->fd >= 0)
-        close (self->fd);
+        hev_task_io_close (self->fd);
     if (self->event_fds[0] >= 0)
-        close (self->event_fds[0]);
+        hev_task_io_close (self->event_fds[0]);
     if (self->event_fds[1] >= 0)
-        close (self->event_fds[1]);
+        hev_task_io_close (self->event_fds[1]);
 
     hev_free (self);
 }
@@ -326,7 +321,8 @@ retry:
     if (res & SYNC_SEND) {
         res = atomic_fetch_or (&self->tsync, sent);
         if (!(res & sent)) {
-            res = write (self->event_fds[1], &val, sizeof (val));
+            res = hev_task_io_write (self->event_fds[1], &val, sizeof (val),
+                                     hev_task_io_nowait, NULL);
             assert (res > 0 && "socks5 worker write event");
         }
     } else {

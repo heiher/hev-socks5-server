@@ -9,13 +9,14 @@
 
 #include <stdio.h>
 #include <stdatomic.h>
-#include <arpa/inet.h>
+#include <hev-sys.h>
 
 #include <yaml.h>
 #include <hev-socks5.h>
 #include <hev-socks5-proto.h>
 
 #include "hev-logger.h"
+#include "hev-compat.h"
 #include "hev-config.h"
 
 static unsigned int workers;
@@ -351,6 +352,11 @@ hev_config_parse_doc (yaml_document_t *doc)
         if (res < 0)
             return -1;
     }
+
+#ifdef _WIN32
+    if (task_stack_size < 16384)
+        task_stack_size = 16384;
+#endif
 
     return 0;
 }
