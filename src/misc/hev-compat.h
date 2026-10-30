@@ -10,11 +10,7 @@
 #ifndef __HEV_COMPAT_H__
 #define __HEV_COMPAT_H__
 
-#if defined(_WIN32) && !defined(__MSYS__) && !defined(__CYGWIN__)
-#define HEV_WIN_NATIVE 1
-#endif
-
-#ifndef HEV_WIN_NATIVE
+#ifndef _WIN32
 
 #include <pthread.h>
 

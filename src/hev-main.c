@@ -24,7 +24,7 @@
 
 #include "hev-main.h"
 
-#if defined(__MSYS__) || defined(_WIN32)
+#ifdef _WIN32
 #define WEAK
 #else
 #define WEAK __attribute__ ((weak))

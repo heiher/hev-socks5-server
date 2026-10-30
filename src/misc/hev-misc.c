@@ -13,7 +13,7 @@
 #include <hev-sys.h>
 #include "hev-compat.h"
 
-#ifndef HEV_WIN_NATIVE
+#ifndef _WIN32
 #include <net/if.h>
 #include <sys/resource.h>
 #endif
@@ -88,7 +88,7 @@ run_as_daemon (const char *pid_file)
         return;
     }
 
-#ifdef HEV_WIN_NATIVE
+#ifdef _WIN32
     /* No daemon on Windows, keep running in the foreground. */
     fprintf (fp, "%lu\n", GetCurrentProcessId ());
 #else
@@ -109,7 +109,7 @@ run_as_daemon (const char *pid_file)
 int
 set_limit_nofile (int limit_nofile)
 {
-#ifdef HEV_WIN_NATIVE
+#ifdef _WIN32
     (void)limit_nofile;
     return 0;
 #else

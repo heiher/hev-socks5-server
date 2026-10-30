@@ -8,8 +8,8 @@ HevSocks5Server is a simple, lightweight socks5 server.
 
 * IPv4/IPv6. (dual stack)
 * Standard `CONNECT` command.
-* Standard `UDP ASSOCIATE` command. [^1]
-* Extended `FWD UDP` command. (UDP in TCP) [^2]
+* Standard `UDP ASSOCIATE` command.
+* Extended `FWD UDP` command. (UDP in TCP) [^1]
 * Multiple username/password authentication.
 
 ## Benchmarks
@@ -88,14 +88,6 @@ when switching between the executable and the shared library.
 On native Windows there is no daemon mode (`pid-file` only writes the process
 id), no `limit-nofile`, no `bind-interface`/`mark`, and no reload on `SIGUSR1`.
 Stop the server with Ctrl+C.
-
-### Windows (MSYS2)
-
-```bash
-git clone --recursive https://github.com/heiher/hev-socks5-server
-cd hev-socks5-server
-make
-```
 
 ## How to Use
 
@@ -294,7 +286,7 @@ object Socks5Service {
 }
 ```
 
-Allow overriding the package and class names in `Application.mk`[^3].
+Allow overriding the package and class names in `Application.mk`[^2].
 
 ```makefile
 APP_CFLAGS := -DPKGNAME=hev/socks5 -DCLSNAME=Socks5Service
@@ -320,6 +312,5 @@ APP_CFLAGS := -DPKGNAME=hev/socks5 -DCLSNAME=Socks5Service
 
 MIT
 
-[^1]: Windows is not supported at this time.
-[^2]: See [protocol specification](https://github.com/heiher/hev-socks5-core/tree/main?tab=readme-ov-file#udp-in-tcp). The [hev-socks5-tunnel](https://github.com/heiher/hev-socks5-tunnel) and [hev-socks5-tproxy](https://github.com/heiher/hev-socks5-tproxy) clients support UDP relay over TCP.
-[^3]: See [Application.mk](https://github.com/heiher/socks5/blob/364084079be989233286af2e33048a442fd06f45/app/src/main/jni/Application.mk#L19)
+[^1]: See [protocol specification](https://github.com/heiher/hev-socks5-core/tree/main?tab=readme-ov-file#udp-in-tcp). The [hev-socks5-tunnel](https://github.com/heiher/hev-socks5-tunnel) and [hev-socks5-tproxy](https://github.com/heiher/hev-socks5-tproxy) clients support UDP relay over TCP.
+[^2]: See [Application.mk](https://github.com/heiher/socks5/blob/364084079be989233286af2e33048a442fd06f45/app/src/main/jni/Application.mk#L19)

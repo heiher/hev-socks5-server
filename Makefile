@@ -37,8 +37,6 @@ EXEEXT=
 # a POSIX sh.exe on PATH, e.g. Git for Windows:
 #   make ARCH=x64
 ifeq ($(OS),Windows_NT)
-ifeq ($(MSYSTEM),)
-WIN_NATIVE=1
 ARCH?=x64
 CROSS_TARGET_x64=x86_64
 CROSS_TARGET_x86=i686
@@ -63,10 +61,9 @@ ifneq ($(ARCH),arm64)
 LDFLAGS+=-Wl,/CETCOMPAT:NO
 endif
 endif
-endif
 
 TPSHARED=tp-shared
-ifneq ($(WIN_NATIVE),1)
+ifneq ($(OS),Windows_NT)
 $(SHARED_TARGET) : CCFLAGS+=-fPIC
 $(SHARED_TARGET) : LDFLAGS+=-shared -pthread
 else
@@ -80,7 +77,7 @@ endif
 
 -include build.mk
 CCFLAGS+=$(VERSION_CFLAGS)
-ifneq ($(WIN_NATIVE),1)
+ifneq ($(OS),Windows_NT)
 TPFLAGS=ENABLE_STACK_OVERFLOW_DETECTOR=1
 endif
 CCSRCS=$(filter %.c,$(SRCFILES))
@@ -96,10 +93,6 @@ CLEANMSG="\e[1;34mCLEAN\e[0m %s\n"
 INSTMSG="\e[1;34mINST\e[0m  %s -> %s\n"
 UNINSMSG="\e[1;34mUNINS\e[0m %s\n"
 
-ifeq ($(MSYSTEM),MSYS)
-	LDFLAGS+=-lmsys-2.0 -lws2_32
-endif
-
 ENABLE_DEBUG :=
 ifeq ($(ENABLE_DEBUG),1)
 	CCFLAGS+=-g -O0 -DENABLE_DEBUG
@@ -111,7 +104,7 @@ ifeq ($(ENABLE_STATIC),1)
 	CCFLAGS+=-static
 endif
 
-ifneq ($(WIN_NATIVE),1)
+ifneq ($(OS),Windows_NT)
 LDFLAGS+=-lpthread
 endif
 LDFLAGS+=$(LFLAGS)
