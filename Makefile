@@ -9,7 +9,7 @@ STRIP=$(CROSS_PREFIX)strip
 CCFLAGS=-O3 -pipe -Wall -Werror $(CFLAGS) \
 		-I$(SRCDIR)/misc \
 		-I$(SRCDIR)/core/include  \
-		-I$(THIRDPARTDIR)/yaml/src \
+		-I$(THIRDPARTDIR)/yaml/include \
 		-I$(THIRDPARTDIR)/hev-task-system/include
 LDFLAGS=-L$(THIRDPARTDIR)/yaml/bin -lyaml \
 		-L$(THIRDPARTDIR)/hev-task-system/bin -lhev-task-system
