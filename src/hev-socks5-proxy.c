@@ -152,9 +152,8 @@ hev_socks5_proxy_load (void)
     return 0;
 }
 
-#ifdef SIGUSR1
 static void
-sigusr1_handler (int signum)
+hev_socks5_proxy_reload_notify (void)
 {
     int err = errno;
     char val = 'r';
@@ -170,6 +169,70 @@ sigusr1_handler (int signum)
     }
 
     errno = err;
+}
+
+#ifdef SIGUSR1
+static void
+sigusr1_handler (int signum)
+{
+    hev_socks5_proxy_reload_notify ();
+}
+#endif
+
+#ifdef _WIN32
+/*
+ * Windows has no SIGUSR1, a named event "Local\hev-socks5-server-reload-<pid>"
+ * is used instead. Signal it, for example from PowerShell:
+ *   [Threading.EventWaitHandle]::OpenExisting(
+ *       "Local\hev-socks5-server-reload-<pid>").Set()
+ */
+static HANDLE reload_events[2];
+static pthread_t reload_thread;
+
+static void *
+reload_thread_handler (void *data)
+{
+    while (WaitForMultipleObjects (2, reload_events, FALSE, INFINITE) ==
+           WAIT_OBJECT_0)
+        hev_socks5_proxy_reload_notify ();
+
+    return NULL;
+}
+
+static void
+hev_socks5_proxy_reload_event_init (void)
+{
+    char name[64];
+
+    snprintf (name, sizeof (name), "Local\\hev-socks5-server-reload-%lu",
+              GetCurrentProcessId ());
+    reload_events[0] = CreateEventA (NULL, FALSE, FALSE, name);
+    reload_events[1] = CreateEventA (NULL, TRUE, FALSE, NULL);
+    if (reload_events[0] && reload_events[1] &&
+        pthread_create (&reload_thread, NULL, reload_thread_handler, NULL) == 0)
+        return;
+
+    LOG_W ("socks5 proxy reload event");
+    if (reload_events[0])
+        CloseHandle (reload_events[0]);
+    if (reload_events[1])
+        CloseHandle (reload_events[1]);
+    reload_events[0] = NULL;
+    reload_events[1] = NULL;
+}
+
+static void
+hev_socks5_proxy_reload_event_fini (void)
+{
+    if (!reload_events[1])
+        return;
+
+    SetEvent (reload_events[1]);
+    pthread_join (reload_thread, NULL);
+    CloseHandle (reload_events[0]);
+    CloseHandle (reload_events[1]);
+    reload_events[0] = NULL;
+    reload_events[1] = NULL;
 }
 #endif
 
@@ -326,6 +389,9 @@ hev_socks5_proxy_init (void)
 #ifdef SIGUSR1
     signal (SIGUSR1, sigusr1_handler);
 #endif
+#ifdef _WIN32
+    hev_socks5_proxy_reload_event_init ();
+#endif
     atomic_fetch_or (&tsync, SYNC_SEND);
 
     return 0;
@@ -368,6 +434,9 @@ retry:
     }
 
     if (reload_fds[0] >= 0) {
+#ifdef _WIN32
+        hev_socks5_proxy_reload_event_fini ();
+#endif
 #ifdef SIGUSR1
         signal (SIGUSR1, SIG_IGN);
 #endif

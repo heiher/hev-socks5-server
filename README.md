@@ -86,7 +86,8 @@ library is `bin/hev-socks5-server.dll` with the import library
 when switching between the executable and the shared library.
 
 On native Windows there is no daemon mode (`pid-file` only writes the process
-id), no `limit-nofile`, no `bind-interface`/`mark`, and no reload on `SIGUSR1`.
+id), no `limit-nofile`, and no `bind-interface`/`mark`. `SIGUSR1` is replaced by a named event, see
+[Live updating authentication file](#live-updating-authentication-file).
 Stop the server with Ctrl+C.
 
 ## How to Use
@@ -177,6 +178,14 @@ Send signal `SIGUSR1` to socks5 server process after the authentication file is 
 
 ```bash
 killall -SIGUSR1 hev-socks5-server
+```
+
+On Windows, signal the named event `Local\hev-socks5-server-reload-<pid>`
+instead, for example from PowerShell:
+
+```powershell
+$pid_ = (Get-Process hev-socks5-server).Id
+[Threading.EventWaitHandle]::OpenExisting("Local\hev-socks5-server-reload-$pid_").Set()
 ```
 
 ### Limit number of connections
