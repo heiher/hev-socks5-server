@@ -87,7 +87,7 @@ hev_socks5_session_task_entry (void *data)
     HevSocks5Session *s = data;
     HevSocks5Worker *self = s->data;
 
-    hev_socks5_server_run (HEV_SOCKS5_SERVER (s));
+    hev_socks5_session_run (s);
 
     hev_list_del (&self->session_set, &s->node);
     hev_object_unref (HEV_OBJECT (s));

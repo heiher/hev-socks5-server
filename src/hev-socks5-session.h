@@ -43,6 +43,7 @@ int hev_socks5_session_construct (HevSocks5Session *self, int fd);
 
 HevSocks5Session *hev_socks5_session_new (int fd);
 
+int hev_socks5_session_run (HevSocks5Session *self);
 void hev_socks5_session_terminate (HevSocks5Session *self);
 
 #endif /* __HEV_SOCKS5_SESSION_H__ */

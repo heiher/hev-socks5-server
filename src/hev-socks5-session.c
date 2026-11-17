@@ -43,6 +43,17 @@ hev_socks5_session_new (int fd)
     return self;
 }
 
+int
+hev_socks5_session_run (HevSocks5Session *self)
+{
+    LOG_D ("%p socks5 session run", self);
+
+    if (!hev_socks5_get_timeout (HEV_SOCKS5 (self)))
+        return -1;
+
+    return hev_socks5_server_run (HEV_SOCKS5_SERVER (self));
+}
+
 void
 hev_socks5_session_terminate (HevSocks5Session *self)
 {
