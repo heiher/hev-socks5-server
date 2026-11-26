@@ -71,11 +71,14 @@ class Bed(base.Bed):
         sh(*r, "link", "set", "hvr0", "up")
 
         # remote "internet": exists only inside the remote environment
-        for a in (self.target4, self.blackhole):
-            sh(*r, "addr", "add", a + "/32", "dev", "lo")
+        sh(*r, "addr", "add", self.target4 + "/32", "dev", "lo")
         sh(*r, "addr", "add", self.target6 + "/128", "dev", "lo", "nodad")
         sh(*s, "-4", "route", "add", "203.0.113.0/24", "via", "10.202.0.2")
         sh(*s, "-6", "route", "add", "2001:db8::/64", "via", "fd00:202::2")
+
+        # black hole: packets are discarded silently, so a connect gets no
+        # answer at all (neither RST nor ICMP error)
+        sh(*r, "route", "add", "blackhole", self.blackhole + "/32")
 
         # connection rate benchmarks burn through ephemeral ports
         for ns in (self.ns_c, self.ns_s):
@@ -94,7 +97,7 @@ class Bed(base.Bed):
                      self.target6, self.name_both, self.name_v6,
                      self.target4, self.name_v4, self.target6, self.name_v6))
 
-        # packet accounting (marks) and a black hole port
+        # packet accounting (marks)
         self.have_nft = shutil.which("nft") is not None
         if self.have_nft:
             sh("ip", "netns", "exec", self.ns_s, "nft", "-f", "-", stdin="""
@@ -102,13 +105,6 @@ table inet hevt {
   chain out { type filter hook output priority mangle; policy accept; }
 }
 """)
-            sh("ip", "netns", "exec", self.ns_r, "nft", "-f", "-", stdin="""
-table inet hevt {
-  chain in { type filter hook input priority filter; policy accept;
-    tcp dport %d drop
-  }
-}
-""" % self.P_DROP)
 
     def teardown(self):
         super().teardown()

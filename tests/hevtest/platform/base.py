@@ -116,7 +116,7 @@ class Bed:
     P_HELLO = 7021                    # TCP: sends "hello", closes
     P_RST = 7022                      # TCP: accepts, resets
     P_CLOSED = 7998                   # nothing listens: connection refused
-    P_DROP = 7999                     # SYN dropped
+    P_DROP = 7999                     # port used with the black hole address
     P_CTRL = 7100
 
     def __init__(self, server_bin, workdir=None, verbose=False):
