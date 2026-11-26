@@ -19,7 +19,7 @@ unsigned int hev_config_get_workers (void);
 const char *hev_config_get_listen_address (void);
 const char *hev_config_get_listen_port (void);
 const char *hev_config_get_udp_listen_address (void);
-int hev_config_get_udp_listen_port (void);
+int hev_config_get_udp_listen_port_range (int *beg, int *num);
 const char *hev_config_get_udp_public_address (int family);
 int hev_config_get_listen_ipv6_only (void);
 

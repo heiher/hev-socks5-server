@@ -42,7 +42,7 @@ sudo apt-get install -y iproute2 nftables python3 build-essential
 | TCP `CONNECT` | IPv4/IPv6 targets and clients, domain names, echo/upload digest/download, half-close, concurrency, idle sessions, refused/unresolvable target, reset, aborted handshakes, pipelined and byte-by-byte handshakes, `BIND`/unknown commands, garbage input |
 | UDP | `UDP ASSOCIATE` and `FWD UDP`: IPv4/IPv6, payload sizes, full cone replies, domain targets, many targets per association, concurrency, lifetime tied to the control connection, foreign senders, garbage datagrams |
 | authentication | username/password (valid, wrong, missing, long), auth file with several users, file precedence, `SIGUSR1` live reload (also with workers), per-user socket mark |
-| config | `listen-address`, `listen-ipv6-only`, `port`, `workers`, `tcp-fastopen`, `udp-port` (fixed/range), `udp-listen-address`, `udp-public-address-v4/v6`, `bind-address[-v4/-v6]`, `bind-interface`, `domain-address-type`, `mark`, all `misc` timeouts, buffers, `task-stack-size`, `limit-nofile`, logging |
+| config | `listen-address`, `listen-ipv6-only`, `port`, `workers`, `tcp-fastopen`, `udp-port` (fixed/range, one association with DST port 0 per port and client IP), `udp-listen-address`, `udp-public-address-v4/v6`, `bind-address[-v4/-v6]`, `bind-interface`, `domain-address-type`, `mark`, all `misc` timeouts, buffers, `task-stack-size`, `limit-nofile`, logging |
 | process | usage/version, bad config files, `conf/main.yml`, `SIGINT`/`SIGTERM`/`SIGPIPE`/`SIGUSR1`, daemon + `pid-file` |
 | benchmarks | TCP throughput + CPU (1 and 4 workers), UDP throughput/loss (UDP-in-UDP and UDP-in-TCP), TCP/UDP latency, connection rate (plain, pipelined, authenticated), memory per session |
 

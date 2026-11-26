@@ -103,6 +103,9 @@ main:
   # Listen address (ipv4|ipv6)
   listen-address: '::'
   # UDP listen port (0: random, a-b: range)
+  # A port serves one UDP ASSOCIATE with DST port 0 per client IP at a time,
+  # so a fixed port allows one and a range of N ports allows N. Others are
+  # rejected.
 # udp-port: 0
   # UDP listen address (ipv4|ipv6)
 # udp-listen-address: '::1'

@@ -86,6 +86,7 @@ class Bed:
     # --- addressing (back-ends may override) ---------------------------
     cli_addr = "10.202.1.2"           # the "user" host
     cli_addr6 = "fd00:202:1::2"
+    cli_addr2 = "10.202.1.3"          # second address of the user host
     srv_addr = "10.202.1.1"           # where the server listens (client side)
     srv_addr6 = "fd00:202:1::1"
     out_addr = "10.202.0.1"           # server's default source towards remote

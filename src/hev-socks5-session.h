@@ -30,6 +30,7 @@ struct _HevSocks5Session
     HevListNode node;
     HevTask *task;
     void *data;
+    void *udp_port;
 };
 
 struct _HevSocks5SessionClass

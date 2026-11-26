@@ -195,8 +195,100 @@ class UdpConfigTest(ServerTestCase):
 
     def test_udp_port_fixed(self):
         self.server(main={"udp-port": 31000})
-        # SO_REUSEPORT lets every association share the port
+        # shared across client IPs, and by client ports sent in DST
         self.assertEqual(self.roundtrip()[1], 31000)
+
+    def associate(self, proxy=None, **kw):
+        """UDP ASSOCIATE with DST 0.0.0.0:0, as Chrome and tunnels send it."""
+        kw.setdefault("want_port", False)
+        u = client.UdpSession(proxy or self.proxy, **kw)
+        self.addCleanup(u.close)
+        return u
+
+    def associate_when_free(self):
+        # the server drops the old association asynchronously
+        got = []
+
+        def attempt():
+            try:
+                got.append(self.associate())
+            except client.ReplyError:
+                pass
+            return got
+
+        self.assertTrue(client.wait_for(attempt), "udp port not released")
+        return got[0]
+
+    def check_own_replies(self, sess):
+        msgs = [b"assoc%d" % i for i in range(len(sess))]
+        for u, m in zip(sess, msgs):
+            u.sendto(m, self.t4, self.bed.P_ECHO)
+        for u, m in zip(sess, msgs):
+            self.assertEqual(u.recvfrom(3.0)[0], m)
+
+    def test_udp_port_fixed_same_client(self):
+        self.server(main={"udp-port": 31000, "workers": 4})
+        first = self.associate()
+        self.assertEqual(first.bound[1], 31000)
+        for _ in range(5):
+            with self.assertRaises(client.ReplyError):
+                self.associate()
+        self.check_own_replies([first])
+        first.close()
+        self.check_own_replies([self.associate_when_free()])
+
+    def test_udp_port_fixed_other_client(self):
+        self.server(main={"udp-port": 31000})
+        a = self.associate()
+        b = self.associate(self.proxy6)
+        self.assertEqual((a.bound[1], b.bound[1]), (31000, 31000))
+        self.check_own_replies([a, b])
+
+    def test_udp_port_fixed_client_ports(self):
+        # a DST with the real client port is told apart by that port
+        self.server(main={"udp-port": 31000})
+        sess = [self.associate()]
+        sess += [self.associate(want_port=True) for _ in range(3)]
+        self.assertEqual([u.bound[1] for u in sess], [31000] * 4)
+        self.check_own_replies(sess)
+
+    def test_udp_port_fixed_dst_address(self):
+        # the limit follows the DST address, not the control connection
+        self.server(main={"udp-port": 31000})
+        cli, cli2 = self.bed.cli_addr, self.bed.cli_addr2
+        a = self.associate(source=cli2, host=cli)
+        with self.assertRaises(client.ReplyError):
+            self.associate(source=cli)
+        b = self.associate(source=cli2)
+        self.assertEqual((a.bound[1], b.bound[1]), (31000, 31000))
+        self.check_own_replies([a, b])
+
+    def test_udp_port_range_no_reuse(self):
+        # the round-robin pick must skip a port the client still holds
+        self.server(main={"udp-port": "31300-31301"})
+        a = self.associate()
+        b = self.associate()
+        b.close()
+        c = self.associate_when_free()
+        # on a shared port the first datagrams land in the wrong relay: the
+        # replies get lost, or the relays swap clients and ending one
+        # association cuts the other client off
+        self.check_own_replies([c, a])
+        c.close()
+        self.check_own_replies([a])
+        self.assertNotEqual(a.bound[1], c.bound[1])
+
+    def test_udp_port_range_same_client(self):
+        self.server(main={"udp-port": "31200-31205", "workers": 4})
+        sess = [self.associate() for _ in range(6)]
+        self.assertEqual(sorted(u.bound[1] for u in sess),
+                         list(range(31200, 31206)))
+        self.check_own_replies(sess)
+        with self.assertRaises(client.ReplyError):
+            self.associate()
+        sess[2].close()
+        sess[2] = self.associate_when_free()
+        self.check_own_replies(sess)
 
     def test_udp_port_range(self):
         self.server(main={"udp-port": "31100-31199"})

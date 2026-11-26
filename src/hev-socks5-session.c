@@ -16,11 +16,105 @@
 #include <hev-memory-allocator.h>
 
 #include "hev-misc.h"
+#include "hev-compat.h"
+#include "hev-rbtree.h"
+#include "hev-compiler.h"
 #include "hev-logger.h"
 #include "hev-config.h"
 #include "hev-socks5-user-mark.h"
 
 #include "hev-socks5-session.h"
+
+typedef struct _UdpPortNode UdpPortNode;
+
+struct _UdpPortNode
+{
+    HevRBTreeNode node;
+    struct in6_addr addr;
+    int port;
+};
+
+static HevRBTree udp_port_tree;
+static HevMutex udp_port_mutex = HEV_MUTEX_INITIALIZER;
+
+static int
+udp_port_insert (UdpPortNode *self)
+{
+    HevRBTreeNode **new = &udp_port_tree.root, *parent = NULL;
+
+    while (*new) {
+        UdpPortNode *this = container_of (*new, UdpPortNode, node);
+        int res;
+
+        res = memcmp (&self->addr, &this->addr, sizeof (self->addr));
+        if (!res)
+            res = self->port - this->port;
+
+        parent = *new;
+        if (res < 0)
+            new = &((*new)->left);
+        else if (res > 0)
+            new = &((*new)->right);
+        else
+            return -1;
+    }
+
+    hev_rbtree_node_link (&self->node, parent, new);
+    hev_rbtree_insert_color (&udp_port_tree, &self->node);
+
+    return 0;
+}
+
+static int
+udp_port_alloc (HevSocks5Session *self, const struct sockaddr_in6 *dst)
+{
+    UdpPortNode *node;
+    int beg, num, off;
+    int res = -1;
+    int i;
+
+    off = hev_config_get_udp_listen_port_range (&beg, &num);
+    if (!beg)
+        return 0;
+
+    if (dst->sin6_port)
+        return beg + off;
+
+    node = hev_malloc0 (sizeof (UdpPortNode));
+    if (!node)
+        return -1;
+
+    node->addr = dst->sin6_addr;
+
+    hev_mutex_lock (&udp_port_mutex);
+    for (i = 0; (i < num) && (res < 0); i++) {
+        node->port = beg + (off + i) % num;
+        res = udp_port_insert (node);
+    }
+    hev_mutex_unlock (&udp_port_mutex);
+
+    if (res < 0) {
+        hev_free (node);
+        return -1;
+    }
+
+    self->udp_port = node;
+
+    return node->port;
+}
+
+static void
+udp_port_free (UdpPortNode *node)
+{
+    if (!node)
+        return;
+
+    hev_mutex_lock (&udp_port_mutex);
+    hev_rbtree_erase (&udp_port_tree, &node->node);
+    hev_mutex_unlock (&udp_port_mutex);
+
+    hev_free (node);
+}
 
 HevSocks5Session *
 hev_socks5_session_new (int fd)
@@ -126,6 +220,7 @@ hev_socks5_session_udp_bind (HevSocks5Server *self, int sock,
 {
     struct sockaddr_in6 *dst = src;
     struct sockaddr_in6 addr;
+    struct sockaddr_in6 peer;
     const char *saddr;
     socklen_t alen;
     int ipv6_only;
@@ -139,7 +234,6 @@ hev_socks5_session_udp_bind (HevSocks5Server *self, int sock,
 
     fd = HEV_SOCKS5 (self)->fd;
     saddr = hev_config_get_udp_listen_address ();
-    sport = hev_config_get_udp_listen_port ();
     ipv6_only = hev_config_get_listen_ipv6_only ();
 
 #ifdef SO_REUSEPORT
@@ -166,22 +260,28 @@ hev_socks5_session_udp_bind (HevSocks5Server *self, int sock,
     if (res < 0)
         return -1;
 
+    if (hev_netaddr_is_any (dst)) {
+        alen = sizeof (struct sockaddr_in6);
+        res = hev_task_io_socket_getpeername (fd, (struct sockaddr *)&peer,
+                                              &alen);
+        if (res < 0)
+            return -1;
+
+        peer.sin6_port = dst->sin6_port;
+        dst = &peer;
+    }
+
+    sport = udp_port_alloc (HEV_SOCKS5_SESSION (self), dst);
+    if (sport < 0) {
+        LOG_W ("%p socks5 session no free udp port for client", self);
+        return -1;
+    }
+
     addr.sin6_port = htons (sport);
     res = hev_task_io_socket_bind (sock, (struct sockaddr *)&addr,
                                    sizeof (struct sockaddr_in6));
     if (res < 0)
         return -1;
-
-    if (hev_netaddr_is_any (dst)) {
-        alen = sizeof (struct sockaddr_in6);
-        res = hev_task_io_socket_getpeername (fd, (struct sockaddr *)&addr,
-                                              &alen);
-        if (res < 0)
-            return -1;
-
-        addr.sin6_port = dst->sin6_port;
-        dst = &addr;
-    }
 
     res = hev_task_io_socket_connect (sock, (struct sockaddr *)dst,
                                       sizeof (struct sockaddr_in6),
@@ -237,10 +337,12 @@ static void
 hev_socks5_session_destruct (HevObject *base)
 {
     HevSocks5Session *self = HEV_SOCKS5_SESSION (base);
+    UdpPortNode *udp_port = self->udp_port;
 
     LOG_D ("%p socks5 session destruct", self);
 
     HEV_SOCKS5_SERVER_TYPE->destruct (base);
+    udp_port_free (udp_port);
 }
 
 HevObjectClass *

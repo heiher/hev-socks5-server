@@ -49,6 +49,7 @@ class Bed(base.Bed):
            "peer", "name", "hvs1", "netns", self.ns_s)
         sh(*c, "addr", "add", self.cli_addr + "/24", "dev", "hvc0")
         sh(*c, "addr", "add", self.cli_addr6 + "/64", "dev", "hvc0", "nodad")
+        sh(*c, "addr", "add", self.cli_addr2 + "/24", "dev", "hvc0")
         sh(*s, "addr", "add", self.srv_addr + "/24", "dev", "hvs1")
         sh(*s, "addr", "add", self.srv_addr6 + "/64", "dev", "hvs1", "nodad")
         sh(*c, "link", "set", "hvc0", "up")

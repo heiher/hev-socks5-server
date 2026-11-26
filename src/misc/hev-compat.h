@@ -14,6 +14,22 @@
 
 #include <pthread.h>
 
+typedef pthread_mutex_t HevMutex;
+
+#define HEV_MUTEX_INITIALIZER PTHREAD_MUTEX_INITIALIZER
+
+static inline void
+hev_mutex_lock (HevMutex *mutex)
+{
+    pthread_mutex_lock (mutex);
+}
+
+static inline void
+hev_mutex_unlock (HevMutex *mutex)
+{
+    pthread_mutex_unlock (mutex);
+}
+
 #else
 
 #include <stdio.h>
@@ -114,6 +130,22 @@ getline (char **lineptr, size_t *n, FILE *stream)
 
     (*lineptr)[len] = '\0';
     return len;
+}
+
+typedef SRWLOCK HevMutex;
+
+#define HEV_MUTEX_INITIALIZER SRWLOCK_INIT
+
+static inline void
+hev_mutex_lock (HevMutex *mutex)
+{
+    AcquireSRWLockExclusive (mutex);
+}
+
+static inline void
+hev_mutex_unlock (HevMutex *mutex)
+{
+    ReleaseSRWLockExclusive (mutex);
 }
 
 #endif

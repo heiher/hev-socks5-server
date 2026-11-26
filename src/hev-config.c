@@ -478,16 +478,19 @@ hev_config_get_udp_listen_address (void)
 }
 
 int
-hev_config_get_udp_listen_port (void)
+hev_config_get_udp_listen_port_range (int *beg, int *num)
 {
     static atomic_uint inc;
     unsigned int cur;
 
+    *beg = udp_listen_port_beg;
+    *num = udp_listen_port_mod;
+
     if (udp_listen_port_mod <= 1)
-        return udp_listen_port_beg;
+        return 0;
 
     cur = atomic_fetch_add_explicit (&inc, 1, memory_order_relaxed);
-    return udp_listen_port_beg + (cur % udp_listen_port_mod);
+    return cur % udp_listen_port_mod;
 }
 
 const char *

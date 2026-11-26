@@ -65,10 +65,12 @@ def unpack_addr(buf, off=0):
     return host, port, off + 2
 
 
-def tcp_connect(host, port, timeout=5.0):
+def tcp_connect(host, port, timeout=5.0, source=None):
     s = socket.socket(family(host), socket.SOCK_STREAM)
     s.settimeout(timeout)
     try:
+        if source:
+            s.bind((source, 0))
         s.connect((host, port))
     except BaseException:
         s.close()
@@ -142,10 +144,10 @@ def request(s, cmd, host, port):
 
 
 def open_session(proxy, cmd, host, port, user=None, pw=None, timeout=10.0,
-                 pipeline=False, offer=None):
+                 pipeline=False, offer=None, source=None):
     """Handshake + request.  Returns (socket, bound host, bound port); the
     socket is closed again on error.  A non-zero reply raises ReplyError."""
-    s = tcp_connect(proxy[0], proxy[1], timeout)
+    s = tcp_connect(proxy[0], proxy[1], timeout, source)
     try:
         if pipeline:
             # everything in one segment: only possible when the method is
@@ -191,21 +193,25 @@ class UdpSession:
     mode ``udp``: UDP ASSOCIATE, datagrams carry the RFC 1928 header.
     mode ``tcp``: FWD UDP (UDP in TCP), datagrams are framed on the control
     connection.
+
+    ``host`` (mode ``udp``): the client address sent in DST, which is also
+    where the datagrams come from.  ``source`` binds the control connection
+    and, without ``host``, the datagram socket.
     """
 
     def __init__(self, proxy, user=None, pw=None, mode="udp", timeout=5.0,
-                 want_port=True, **kw):
+                 want_port=True, host=None, **kw):
         self.mode = mode
         self.proxy = proxy
         self.buf = b""
         any_addr = "::" if ":" in proxy[0] else "0.0.0.0"
         if mode == "udp":
             self.sock = socket.socket(family(proxy[0]), socket.SOCK_DGRAM)
-            self.sock.bind((any_addr, 0))
+            self.sock.bind((host or kw.get("source") or any_addr, 0))
             port = self.sock.getsockname()[1] if want_port else 0
             try:
                 self.ctrl, bh, bp = open_session(
-                    proxy, CMD_UDP_ASSOCIATE, any_addr, port, user, pw,
+                    proxy, CMD_UDP_ASSOCIATE, host or any_addr, port, user, pw,
                     timeout, **kw)
             except BaseException:
                 self.sock.close()
