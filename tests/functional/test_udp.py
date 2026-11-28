@@ -202,6 +202,21 @@ class UdpTest(ServerTestCase):
         got, _ = client.udp_roundtrip(u, self.t4, self.bed.P_ECHO, b"still ok")
         self.assertEqual(got, b"still ok")
 
+    def test_fragment_dropped(self):
+        # RFC 1928: without fragmentation support, FRAG != 0 MUST be dropped
+        client.tcp_ctrl(self.proxy, self.t4, self.bed.P_CTRL,
+                        "udp-sink")                          # reset
+        u = self.session("udp")
+        hdr = client.pack_addr(self.t4, self.bed.P_SINK)
+        for frag in (1, 2, 0x7f, 0x80, 0x81, 0xff):
+            u.sock.sendto(b"\0\0" + bytes((frag,)) + hdr + b"f" * 50,
+                          u.relay)
+        u.sendto(b"w" * 10, self.t4, self.bed.P_SINK)
+        time.sleep(0.3)
+        n, pk = map(int, client.tcp_ctrl(
+            self.proxy, self.t4, self.bed.P_CTRL, "udp-sink").split())
+        self.assertEqual((n, pk), (10, 1))
+
     def test_tcp_still_works(self):
         u = self.session("udp")
         s = self.connect(self.t4, self.bed.P_ECHO)
