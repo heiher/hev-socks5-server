@@ -216,23 +216,19 @@ hev_socks5_session_bind (HevSocks5 *self, int fd, const struct sockaddr *dest)
 
 static int
 hev_socks5_session_udp_bind (HevSocks5Server *self, int sock,
-                             struct sockaddr_in6 *src)
+                             const struct sockaddr_in6 *client,
+                             struct sockaddr_in6 *local)
 {
-    struct sockaddr_in6 *dst = src;
-    struct sockaddr_in6 addr;
-    struct sockaddr_in6 peer;
+    HevSocks5ServerClass *sskptr;
     const char *saddr;
-    socklen_t alen;
     int ipv6_only;
     int one = 1;
     int family;
     int sport;
     int res;
-    int fd;
 
     LOG_D ("%p socks5 session udp bind", self);
 
-    fd = HEV_SOCKS5 (self)->fd;
     saddr = hev_config_get_udp_listen_address ();
     ipv6_only = hev_config_get_listen_ipv6_only ();
 
@@ -250,62 +246,36 @@ hev_socks5_session_udp_bind (HevSocks5Server *self, int sock,
             return -1;
     }
 
-    memset (&addr, 0, sizeof (addr));
-    alen = sizeof (struct sockaddr_in6);
-    if (saddr)
-        res = hev_netaddr_resolve (&addr, saddr, NULL);
-    else
-        res = hev_task_io_socket_getsockname (fd, (struct sockaddr *)&addr,
-                                              &alen);
-    if (res < 0)
-        return -1;
-
-    if (hev_netaddr_is_any (dst)) {
-        alen = sizeof (struct sockaddr_in6);
-        res = hev_task_io_socket_getpeername (fd, (struct sockaddr *)&peer,
-                                              &alen);
-        if (res < 0)
-            return -1;
-
-        peer.sin6_port = dst->sin6_port;
-        dst = &peer;
-    }
-
-    sport = udp_port_alloc (HEV_SOCKS5_SESSION (self), dst);
+    sport = udp_port_alloc (HEV_SOCKS5_SESSION (self), client);
     if (sport < 0) {
         LOG_W ("%p socks5 session no free udp port for client", self);
         return -1;
     }
 
-    addr.sin6_port = htons (sport);
-    res = hev_task_io_socket_bind (sock, (struct sockaddr *)&addr,
-                                   sizeof (struct sockaddr_in6));
+    if (saddr) {
+        memset (local, 0, sizeof (struct sockaddr_in6));
+        res = hev_netaddr_resolve (local, saddr, NULL);
+        if (res < 0)
+            return -1;
+    }
+
+    local->sin6_port = htons (sport);
+
+    sskptr = HEV_SOCKS5_SERVER_CLASS (HEV_SOCKS5_SERVER_TYPE);
+    res = sskptr->binder (self, sock, client, local);
     if (res < 0)
         return -1;
 
-    res = hev_task_io_socket_connect (sock, (struct sockaddr *)dst,
-                                      sizeof (struct sockaddr_in6),
-                                      hev_task_io_nowait, NULL);
-    if (res < 0)
-        return -1;
-
-    HEV_SOCKS5 (self)->udp_associated = !!dst->sin6_port;
-
-    alen = sizeof (struct sockaddr_in6);
-    res = hev_task_io_socket_getsockname (sock, (struct sockaddr *)src, &alen);
-    if (res < 0)
-        return -1;
-
-    if (IN6_IS_ADDR_V4MAPPED (&src->sin6_addr))
+    if (IN6_IS_ADDR_V4MAPPED (&local->sin6_addr))
         family = AF_INET;
     else
         family = AF_INET6;
 
     saddr = hev_config_get_udp_public_address (family);
     if (saddr) {
-        sport = src->sin6_port;
-        res = hev_netaddr_resolve (src, saddr, NULL);
-        src->sin6_port = sport;
+        sport = local->sin6_port;
+        res = hev_netaddr_resolve (local, saddr, NULL);
+        local->sin6_port = sport;
         if (res < 0)
             return -1;
     }
