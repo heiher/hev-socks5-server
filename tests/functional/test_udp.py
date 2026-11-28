@@ -165,6 +165,35 @@ class UdpTest(ServerTestCase):
         with self.assertRaises(socket.timeout):
             other.recv(100)
 
+    def check_foreign_first(self, u, source):
+        # RFC 1928: datagrams from any other source IP are dropped, so one
+        # sent before the client's own cannot take the association over
+        other = socket.socket(client.family(source), socket.SOCK_DGRAM)
+        self.addCleanup(other.close)
+        other.bind((source, 0))
+        other.settimeout(1.0)
+        other.sendto(b"\0\0\0" + client.pack_addr(self.t4, self.bed.P_ECHO) +
+                     b"intruder", u.relay)
+        with self.assertRaises(socket.timeout):
+            other.recv(100)
+        got, _ = client.udp_roundtrip(u, self.t4, self.bed.P_ECHO, b"owner")
+        self.assertEqual(got, b"owner")
+
+    def test_relay_drops_other_ip_before_client(self):
+        # DST 0.0.0.0:0: the client IP is the one of the control connection
+        u = self.session("udp", want_port=False, source=self.bed.cli_addr)
+        self.check_foreign_first(u, self.bed.cli_addr2)
+
+    def test_relay_drops_other_ip_before_client_port(self):
+        u = self.session("udp", source=self.bed.cli_addr)
+        self.check_foreign_first(u, self.bed.cli_addr2)
+
+    def test_relay_drops_other_ip_before_client_dst(self):
+        # DST names the client IP, the control connection IP is foreign
+        u = self.session("udp", want_port=False, source=self.bed.cli_addr,
+                         host=self.bed.cli_addr2)
+        self.check_foreign_first(u, self.bed.cli_addr)
+
     def test_garbage_datagram(self):
         u = self.session("udp")
         for junk in (b"", b"\0", b"\0\0\0", b"\0\0\0\x01", b"\0\0\x05" + b"x" * 8,
